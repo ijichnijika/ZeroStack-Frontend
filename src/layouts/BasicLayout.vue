@@ -8,12 +8,12 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
     <a-layout class="layout-container">
       <a-layout-header
         class="layout-header"
-        style="height: 72px; line-height: 72px; background: #fff; padding: 0"
+        style="height: 72px; line-height: 72px; background: transparent; padding: 0"
       >
         <GlobalHeader />
       </a-layout-header>
       <a-layout-content class="layout-content">
-        <div class="content-wrapper">
+        <div class="content-wrapper glass-effect">
           <router-view />
         </div>
       </a-layout-content>
@@ -35,7 +35,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: #f5f7fa;
+  background: transparent;
 }
 
 .layout-header {
@@ -46,7 +46,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
   padding: 0;
   height: 72px;
   line-height: 72px;
-  background: #fff;
+  background: transparent;
 }
 
 .layout-content {
@@ -58,11 +58,8 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 }
 
 .content-wrapper {
-  background: #fff;
   padding: 24px;
-  border-radius: 8px;
-  min-height: 360px;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  border-radius: 16px;
   flex: 1;
   width: 100%;
   max-width: 1200px;
@@ -72,7 +69,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 
 .layout-footer {
   padding: 0;
-  background: #f0f2f5;
+  background: transparent;
 }
 
 /* 响应式设计适配手机等小屏设备 */

@@ -1,21 +1,42 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { message } from 'ant-design-vue'
 import { UserOutlined, SettingOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const route = useRoute()
+const userStore = useUserStore()
 
 const handleMenuClick = ({ key }: { key: string }) => {
   router.push(key)
 }
 
 const menuItems = computed(() => {
-  return router.options.routes
-    .filter((r) => !r.meta?.hideInMenu)
+  // 寻找到根布局路由下的子路由，如果没配置嵌套则默认使用顶级路由
+  const baseRoute = router.options.routes.find((r) => r.path === '/')
+  const routesToRender = baseRoute?.children ? baseRoute.children.map(child => ({
+    ...child,
+    // 将相对子路径转换为绝对路径
+    path: child.path.startsWith('/') ? child.path : `/${child.path}`
+  })) : router.options.routes
+
+  return routesToRender
+    .filter((r) => {
+      // 过滤需要隐藏的菜单
+      if (r.meta?.hideInMenu) {
+        return false
+      }
+      // 过滤非管理员不可见菜单
+      if (r.meta?.needAdmin && userStore.loginUser?.userRole !== 'admin') {
+        return false
+      }
+      return true
+    })
     .map((r) => ({
       key: r.path,
-      label: r.name === 'home' ? '首页' : r.name === 'about' ? '关于' : r.name || '页面',
+      label: (r.meta?.title as string) || r.name || '页面',
     }))
 })
 
@@ -27,6 +48,22 @@ watch(
     selectedKeys.value = [newPath]
   },
 )
+
+const handleDropdownClick = async ({ key }: { key: string }) => {
+  if (key === 'profile') {
+    router.push('/user/profile')
+  } else if (key === 'settings') {
+    router.push('/user/settings')
+  } else if (key === 'logout') {
+    try {
+      await userStore.logout()
+      message.success('退出登录成功')
+      router.push('/user/login')
+    } catch (e) {
+      message.error('退出登录失败')
+    }
+  }
+}
 </script>
 
 <template>
@@ -42,37 +79,49 @@ watch(
         mode="horizontal"
         :items="menuItems"
         @click="handleMenuClick"
-        :style="{ lineHeight: '72px', borderBottom: 'none', width: '100%' }"
+        :style="{ lineHeight: '72px', borderBottom: 'none', width: '100%', background: 'transparent' }"
       />
     </div>
 
     <div class="header-right">
-      <a-dropdown placement="bottomRight" :trigger="['click']">
-        <div class="user-profile-trigger">
-          <a-avatar style="background-color: #1890ff">
-            <template #icon><UserOutlined /></template>
-          </a-avatar>
-          <span class="username">nijika</span>
-          <DownOutlined class="arrow-icon" />
-        </div>
-        <template #overlay>
-          <a-menu>
-            <a-menu-item key="profile">
+      <!-- 已登录展示用户信息 -->
+      <template v-if="userStore.loginUser?.id">
+        <a-dropdown placement="bottomRight" :trigger="['click']">
+          <div class="user-profile-trigger">
+            <a-avatar
+              :src="userStore.loginUser.userAvatar"
+              style="background-color: #1890ff;"
+            >
               <template #icon><UserOutlined /></template>
-              个人中心
-            </a-menu-item>
-            <a-menu-item key="settings">
-              <template #icon><SettingOutlined /></template>
-              个人设置
-            </a-menu-item>
-            <a-menu-divider />
-            <a-menu-item key="logout">
-              <template #icon><LogoutOutlined /></template>
-              退出登录
-            </a-menu-item>
-          </a-menu>
-        </template>
-      </a-dropdown>
+            </a-avatar>
+            <span class="username">{{ userStore.loginUser.userName || userStore.loginUser.userAccount }}</span>
+            <DownOutlined class="arrow-icon" />
+          </div>
+          <template #overlay>
+            <a-menu @click="handleDropdownClick" class="glass-dropdown">
+              <a-menu-item key="profile">
+                <template #icon><UserOutlined /></template>
+                个人中心
+              </a-menu-item>
+              <a-menu-item key="settings">
+                <template #icon><SettingOutlined /></template>
+                个人设置
+              </a-menu-item>
+              <a-menu-divider />
+              <a-menu-item key="logout">
+                <template #icon><LogoutOutlined /></template>
+                退出登录
+              </a-menu-item>
+            </a-menu>
+          </template>
+        </a-dropdown>
+      </template>
+      <!-- 未登录展示登录按钮 -->
+      <template v-else>
+        <a-button type="primary" shape="round" @click="router.push('/user/login')" class="login-btn">
+          登录
+        </a-button>
+      </template>
     </div>
   </div>
 </template>
@@ -84,8 +133,11 @@ watch(
   justify-content: space-between;
   height: 72px;
   padding: 0 32px;
-  background: #fff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(16px) saturate(120%);
+  -webkit-backdrop-filter: blur(16px) saturate(120%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
   user-select: none;
 }
 
@@ -114,6 +166,9 @@ watch(
   color: #1f1f1f;
   white-space: nowrap;
   letter-spacing: -0.3px;
+  background: linear-gradient(135deg, #1f1f1f 0%, #434343 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .header-center {
@@ -121,9 +176,19 @@ watch(
   min-width: 0;
 }
 
+:deep(.ant-menu) {
+  border-bottom: none !important;
+}
+
 :deep(.ant-menu-item) {
-  font-size: 16px !important;
+  font-size: 15px !important;
   font-weight: 500 !important;
+  color: #555 !important;
+  transition: all 0.3s ease !important;
+}
+
+:deep(.ant-menu-item-selected) {
+  color: #1890ff !important;
 }
 
 .header-right {
@@ -138,23 +203,40 @@ watch(
   align-items: center;
   gap: 8px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 6px;
-  transition: background-color 0.2s ease;
+  padding: 6px 12px;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  line-height: normal;
+  transition: all 0.3s ease;
 }
 
 .user-profile-trigger:hover {
-  background-color: #f5f5f5;
+  background-color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .username {
-  font-size: 15px;
-  color: rgba(0, 0, 0, 0.85);
-  font-weight: 500;
+  font-size: 14px;
+  color: rgba(0, 0, 0, 0.8);
+  font-weight: 600;
 }
 
 .arrow-icon {
   font-size: 10px;
   color: rgba(0, 0, 0, 0.45);
 }
+
+.login-btn {
+  background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
+  border: none;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.3);
+}
+
+.login-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(24, 144, 255, 0.4);
+}
 </style>
+
