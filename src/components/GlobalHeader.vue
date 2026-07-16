@@ -79,7 +79,7 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
         mode="horizontal"
         :items="menuItems"
         @click="handleMenuClick"
-        :style="{ lineHeight: '72px', borderBottom: 'none', width: '100%', background: 'transparent' }"
+        :style="{ lineHeight: '60px', borderBottom: 'none', width: '100%', background: 'transparent' }"
       />
     </div>
 
@@ -116,9 +116,8 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
           </template>
         </a-dropdown>
       </template>
-      <!-- 未登录展示登录按钮 -->
       <template v-else>
-        <a-button type="primary" shape="round" @click="router.push('/user/login')" class="login-btn">
+        <a-button type="primary" shape="round" @click="router.push('/user/login')" class="primary-animated-btn header-btn-size">
           登录
         </a-button>
       </template>
@@ -131,7 +130,7 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 72px;
+  height: 60px;
   padding: 0 32px;
   background: rgba(255, 255, 255, 0.6) !important;
   backdrop-filter: blur(16px) saturate(120%);
@@ -150,7 +149,7 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
 }
 
 .logo {
-  height: 42px;
+  height: 36px;
   width: auto;
   margin-right: 12px;
   transition: transform 0.3s ease;
@@ -162,13 +161,11 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
 
 .title {
   font-size: 22px;
-  font-weight: 700;
-  color: #1f1f1f;
+  font-weight: 500;
+  color: #1a1a1a;
   white-space: nowrap;
-  letter-spacing: -0.3px;
-  background: linear-gradient(135deg, #1f1f1f 0%, #434343 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+  font-family: 'Google Sans', sans-serif;
 }
 
 .header-center {
@@ -183,12 +180,22 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
 :deep(.ant-menu-item) {
   font-size: 15px !important;
   font-weight: 500 !important;
-  color: #555 !important;
-  transition: all 0.3s ease !important;
+  color: #444746 !important;
+  transition: all 0.2s ease !important;
+  margin: 0 8px !important;
+}
+
+:deep(.ant-menu-item:hover) {
+  color: #1a73e8 !important;
 }
 
 :deep(.ant-menu-item-selected) {
-  color: #1890ff !important;
+  color: #1a73e8 !important;
+  background-color: transparent !important;
+}
+
+:deep(.ant-menu-item-selected::after) {
+  border-bottom: 2px solid #1a73e8 !important;
 }
 
 .header-right {
@@ -227,16 +234,10 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
   color: rgba(0, 0, 0, 0.45);
 }
 
-.login-btn {
-  background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
-  border: none;
-  font-weight: 600;
-  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.3);
-}
-
-.login-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(24, 144, 255, 0.4);
+.header-btn-size {
+  height: 40px !important;
+  padding: 0 24px !important;
+  font-size: 15px !important;
 }
 </style>
 

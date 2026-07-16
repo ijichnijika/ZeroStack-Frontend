@@ -18,9 +18,15 @@ dayjs.locale('zh-cn')
 </template>
 
 <style>
+@import url('https://fonts.googleapis.com/css?family=Google+Sans:400,500,700&display=swap');
+
 body {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: #ffffff;
+  color: #1a1a1a;
+  -webkit-font-smoothing: antialiased;
 }
 </style>

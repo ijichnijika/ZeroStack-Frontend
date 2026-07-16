@@ -167,7 +167,8 @@ const rules = {
                 size="large"
                 block
                 :loading="loading"
-                class="submit-btn"
+                class="primary-animated-btn"
+                style="width: 100%; height: 48px; margin-top: 6px;"
               >
                 注 册
               </a-button>
@@ -197,8 +198,8 @@ const rules = {
 .glass-card {
   display: flex;
   width: 100%;
-  max-width: 920px;
-  min-height: 540px;
+  max-width: 1000px;
+  min-height: 640px;
   background: rgba(255, 255, 255, 0.4) !important;
   backdrop-filter: blur(20px) saturate(120%);
   -webkit-backdrop-filter: blur(20px) saturate(120%);
@@ -214,7 +215,7 @@ const rules = {
   position: relative;
   background-image: url('@/assets/login_illustration.png');
   background-size: cover;
-  background-position: center;
+  background-position: center 20%;
   background-repeat: no-repeat;
 }
 
@@ -320,28 +321,6 @@ const rules = {
   font-size: 16px;
 }
 
-/* 胶囊高对比度黑色按钮 */
-.submit-btn {
-  height: 48px;
-  font-size: 15px;
-  font-weight: 600;
-  border-radius: 99px;
-  background-color: #111827;
-  border: none;
-  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.12);
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  margin-top: 6px;
-}
-
-.submit-btn:hover, .submit-btn:focus {
-  background-color: #1f2937;
-  transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(17, 24, 39, 0.18);
-}
-
-.submit-btn:active {
-  transform: translateY(0px);
-}
 
 /* 表单底部 */
 .form-footer {

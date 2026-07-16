@@ -13,33 +13,35 @@
 
 <style scoped>
 .global-footer {
-  padding: 24px 16px;
+  padding: 32px 16px;
   text-align: center;
-  background: #f0f2f5;
-  color: rgba(0, 0, 0, 0.45);
+  background: transparent;
+  color: #5f6368;
   font-size: 14px;
 }
 
 .footer-links {
-  margin-bottom: 8px;
+  margin-bottom: 12px;
 }
 
 .footer-links a {
-  color: rgba(0, 0, 0, 0.45);
+  color: #5f6368;
   transition: color 0.3s;
   text-decoration: none;
 }
 
 .footer-links a:hover {
-  color: #1890ff;
+  color: #1a73e8;
 }
 
 .divider {
-  margin: 0 12px;
-  color: rgba(0, 0, 0, 0.15);
+  margin: 0 16px;
+  color: #e0e0e0;
 }
 
 .copyright {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-size: 13px;
+  color: #8c8c8c;
 }
 </style>

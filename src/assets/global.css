@@ -52,9 +52,11 @@
   0% {
     transform: translate(0, 0) scale(1);
   }
+
   50% {
     transform: translate(60px, -80px) scale(1.1);
   }
+
   100% {
     transform: translate(-30px, 50px) scale(0.9);
   }
@@ -90,7 +92,8 @@
   background: rgba(255, 255, 255, 0.6) !important;
 }
 
-.glass-input:focus, .glass-input-focused {
+.glass-input:focus,
+.glass-input-focused {
   background: rgba(255, 255, 255, 0.8) !important;
   border-color: #1890ff !important;
   box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.15) !important;
@@ -133,9 +136,11 @@
   0% {
     background-position: 0% 50%;
   }
+
   50% {
     background-position: 100% 50%;
   }
+
   100% {
     background-position: 0% 50%;
   }
@@ -146,17 +151,80 @@
   background: transparent !important;
 }
 
-.glass-table .ant-table-thead > tr > th {
+.glass-table .ant-table-thead>tr>th {
   background: rgba(255, 255, 255, 0.6) !important;
   border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
 }
 
-.glass-table .ant-table-tbody > tr > td {
+.glass-table .ant-table-tbody>tr>td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
   background: rgba(255, 255, 255, 0.25) !important;
   transition: background 0.3s ease;
 }
 
-.glass-table .ant-table-tbody > tr:hover > td {
+.glass-table .ant-table-tbody>tr:hover>td {
   background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* 全局动态渐变主按钮 */
+.primary-animated-btn {
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background-color: #4481eb !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(164, 80, 225, 0.2) !important;
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1) !important;
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.5px;
+}
+
+.primary-animated-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(110deg, #4481eb, #a450e1, #4481eb);
+  background-size: 200% 100%;
+  z-index: -1;
+  opacity: 0.9;
+  transition: background-position 0.6s cubic-bezier(0.25, 1, 0.5, 1), opacity 0.4s ease !important;
+}
+
+.primary-animated-btn:hover {
+  box-shadow: 0 8px 24px rgba(164, 80, 225, 0.45) !important;
+}
+
+.primary-animated-btn:hover::before {
+  background-position: 100% 0;
+  opacity: 1;
+}
+
+/* 全局次级按钮 */
+.secondary-animated-btn {
+  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background: #ffffff !important;
+  color: #5f6368 !important;
+  border: 1px solid #d0d0d0 !important;
+  border-radius: 9999px !important;
+  font-weight: 500 !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+  transition: all 0.3s ease !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.secondary-animated-btn:hover {
+  border-color: #a450e1 !important;
+  color: #a450e1 !important;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08) !important;
 }

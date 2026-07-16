@@ -8,7 +8,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
     <a-layout class="layout-container">
       <a-layout-header
         class="layout-header"
-        style="height: 72px; line-height: 72px; background: transparent; padding: 0"
+        style="height: 60px; line-height: 60px; background: transparent; padding: 0"
       >
         <GlobalHeader />
       </a-layout-header>
@@ -44,8 +44,8 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
   z-index: 100;
   width: 100%;
   padding: 0;
-  height: 72px;
-  line-height: 72px;
+  height: 60px;
+  line-height: 60px;
   background: transparent;
 }
 

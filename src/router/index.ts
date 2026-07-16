@@ -29,6 +29,26 @@ const router = createRouter({
           },
         },
         {
+          path: 'admin/app-manage',
+          name: 'appManage',
+          component: () => import('../pages/admin/AppManagePage.vue'),
+          meta: {
+            title: '应用管理',
+            needAdmin: true,
+          },
+        },
+
+        {
+          path: 'app/edit/:id',
+          name: 'appEdit',
+          component: () => import('../pages/app/AppEditPage.vue'),
+          meta: {
+            title: '应用编辑',
+            hideInMenu: true,
+            needLogin: true,
+          },
+        },
+        {
           path: 'user/profile',
           name: 'userProfile',
           component: () => import('../pages/user/UserProfilePage.vue'),
@@ -55,6 +75,16 @@ const router = createRouter({
       meta: {
         title: '用户登录',
         hideInMenu: true,
+      },
+    },
+    {
+      path: '/app/chat/:id',
+      name: 'appChat',
+      component: () => import('../pages/app/AppChatPage.vue'),
+      meta: {
+        title: '应用生成',
+        hideInMenu: true,
+        needLogin: true,
       },
     },
     {
