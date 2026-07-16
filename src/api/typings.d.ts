@@ -30,6 +30,11 @@ declare namespace API {
     appId?: number
   }
 
+  type AppGenTitleRequest = {
+    appId?: number
+    prompt?: string
+  }
+
   type AppQueryRequest = {
     pageNum?: number
     pageSize?: number

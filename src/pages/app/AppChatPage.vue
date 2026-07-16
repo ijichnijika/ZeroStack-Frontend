@@ -3,14 +3,16 @@ import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
-import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined } from '@ant-design/icons-vue'
-import { getAppVoById, deleteApp, deployApp } from '@/api/appController'
+import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined } from '@ant-design/icons-vue'
+import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle } from '@/api/appController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
+
+const deployBaseUrl = import.meta.env.VITE_DEPLOY_BASE_URL || 'http://localhost'
 
 const appId = route.params.id as any
 
@@ -42,6 +44,57 @@ const messagesContainer = ref<HTMLElement | null>(null)
 
 const messages = ref<{ role: 'user' | 'ai'; content: string }[]>([])
 
+const isEditingTitle = ref(false)
+const editTitleValue = ref('')
+const generatingTitle = ref(false)
+
+const startEditTitle = () => {
+  editTitleValue.value = appInfo.value?.appName || ''
+  isEditingTitle.value = true
+}
+
+const saveTitle = async () => {
+  if (!editTitleValue.value.trim() || editTitleValue.value === appInfo.value?.appName) {
+    isEditingTitle.value = false
+    return
+  }
+  try {
+    const res = await updateApp({ id: appId, appName: editTitleValue.value })
+    if (res.data?.code === 0) {
+      if (appInfo.value) {
+        appInfo.value.appName = editTitleValue.value
+      }
+      isEditingTitle.value = false
+    } else {
+      message.error(res.data?.message || '保存失败')
+    }
+  } catch (e: any) {
+    message.error('保存失败')
+  }
+}
+
+const handleAiGenTitle = async () => {
+  if (generatingTitle.value) return
+  generatingTitle.value = true
+  try {
+    const res = await genAppTitle({ appId, prompt: appInfo.value?.initPrompt || '' })
+    if (res.data?.code === 0 && res.data?.data) {
+      editTitleValue.value = res.data.data
+      if (appInfo.value) {
+        appInfo.value.appName = res.data.data
+      }
+      message.success('AI 生成标题成功')
+      isEditingTitle.value = false
+    } else {
+      message.error(res.data?.message || '生成失败')
+    }
+  } catch (e: any) {
+    message.error('生成失败')
+  } finally {
+    generatingTitle.value = false
+  }
+}
+
 const isCreator = computed(() => {
   if (!appInfo.value || !userStore.loginUser?.id) return true // 默认放行，等加载完再判断
   return appInfo.value.userId === userStore.loginUser.id
@@ -55,7 +108,8 @@ const loadAppInfo = async () => {
       
       // 判断是否已经有生成的内容
       if (appInfo.value.codeGenType) {
-         iframeUrl.value = `http://localhost:8080/api/static/${appInfo.value.codeGenType}_${appInfo.value.id}/`
+        const previewBaseUrl = import.meta.env.VITE_PREVIEW_BASE_URL || 'http://localhost:8080/api/static'
+        iframeUrl.value = `${previewBaseUrl}/${appInfo.value.codeGenType}_${appInfo.value.id}/`
       }
 
       // 如果有 auto=1 参数，并且不携带 view=1，说明是从创建页跳转过来的新应用，自动触发一次对话
@@ -100,7 +154,8 @@ const doGenerate = async (text: string) => {
   messages.value.push({ role: 'ai', content: '' })
 
   try {
-    const url = `http://localhost:8080/api/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}`
+    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
+    const url = `${apiBaseUrl}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}`
     const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.onmessage = (event) => {
@@ -180,7 +235,7 @@ const handleDeploy = async () => {
 
 const copyLink = async () => {
   try {
-    await navigator.clipboard.writeText(`http://localhost/${deployKeyForModal.value}`)
+    await navigator.clipboard.writeText(`${deployBaseUrl}/${deployKeyForModal.value}`)
     message.success('链接已复制到剪贴板')
   } catch (err) {
     message.error('复制失败')
@@ -188,7 +243,7 @@ const copyLink = async () => {
 }
 
 const visitWebsite = () => {
-  window.open(`http://localhost/${deployKeyForModal.value}`, '_blank')
+  window.open(`${deployBaseUrl}/${deployKeyForModal.value}`, '_blank')
 }
 
 onMounted(() => {
@@ -201,10 +256,30 @@ onMounted(() => {
     <!-- 顶部栏 -->
     <div class="top-bar">
       <div class="left-section">
-        <a-button type="text" shape="circle" @click="router.back()">
+        <a-button type="text" @click="router.push('/')" style="margin-right: 8px;">
           <template #icon><ArrowLeftOutlined /></template>
         </a-button>
-        <span class="app-name">{{ appInfo?.appName || '加载中...' }}</span>
+        <div v-if="!isEditingTitle" class="title-display" @click="startEditTitle">
+          <span class="app-name">{{ appInfo?.appName || '加载中...' }}</span>
+          <EditOutlined class="edit-icon" />
+        </div>
+        <div v-else class="title-edit">
+          <input 
+            v-model="editTitleValue" 
+            class="title-input" 
+            @keyup.enter="saveTitle"
+            @blur="saveTitle" 
+            autoFocus
+          />
+          <a-tooltip title="使用AI自动生成">
+            <a-button type="primary" shape="circle" size="small" class="ai-gen-btn" :loading="generatingTitle" @mousedown.prevent="handleAiGenTitle">
+              <template #icon><RobotOutlined /></template>
+            </a-button>
+          </a-tooltip>
+          <a-button type="text" shape="circle" size="small" class="save-title-btn" @mousedown.prevent="saveTitle">
+            <template #icon><CheckOutlined /></template>
+          </a-button>
+        </div>
       </div>
       <div class="right-section">
         <AppInfoPopover
@@ -284,7 +359,7 @@ onMounted(() => {
         
         <div style="display: flex; align-items: center; border: 1px solid #d9d9d9; border-radius: 6px; padding: 0 4px 0 12px; margin-bottom: 32px; height: 44px; background: #fafafa;">
           <span style="flex: 1; text-align: left; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            http://localhost/{{ deployKeyForModal }}
+            {{ deployBaseUrl }}/{{ deployKeyForModal }}
           </span>
           <a-button type="text" @click="copyLink" style="color: #666;">
             <template #icon><CopyOutlined /></template>
@@ -339,6 +414,59 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 600;
   color: #1a1a1a;
+}
+
+.title-display {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color 0.2s;
+}
+
+.title-display:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.edit-icon {
+  font-size: 14px;
+  color: #999;
+  margin-left: 8px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.title-display:hover .edit-icon {
+  opacity: 1;
+}
+
+.title-edit {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+}
+
+.title-input {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1a1a1a;
+  border: none;
+  border-bottom: 2px solid #1890ff;
+  background: transparent;
+  outline: none;
+  padding: 2px 4px;
+  width: 200px;
+}
+
+.ai-gen-btn {
+  background: linear-gradient(135deg, #1890ff, #52c41a);
+  border: none;
+}
+
+.save-title-btn {
+  color: #52c41a;
 }
 
 .deploy-btn {

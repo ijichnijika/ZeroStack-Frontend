@@ -26,7 +26,8 @@ const goChat = (appId: number) => {
 }
 
 const openPreview = (deployKey: string) => {
-  window.open(`http://localhost/${deployKey}`, '_blank')
+  const deployBaseUrl = import.meta.env.VITE_DEPLOY_BASE_URL || 'http://localhost'
+  window.open(`${deployBaseUrl}/${deployKey}`, '_blank')
 }
 </script>
 
