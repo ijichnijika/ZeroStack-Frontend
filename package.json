@@ -19,7 +19,9 @@
     "@ant-design/icons-vue": "^7.0.1",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.18.1",
+    "highlight.js": "^11.11.1",
     "marked": "^18.0.6",
+    "marked-highlight": "^2.2.4",
     "pinia": "^3.0.4",
     "vue": "^3.5.38",
     "vue-router": "^5.1.0"

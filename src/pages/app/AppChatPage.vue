@@ -6,8 +6,7 @@ import { useUserStore } from '@/stores/user'
 import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined } from '@ant-design/icons-vue'
 import { getAppVoById, deleteApp, deployApp } from '@/api/appController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
-import { marked } from 'marked'
-import dayjs from 'dayjs'
+import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -235,8 +234,7 @@ onMounted(() => {
               <div v-if="msg.role === 'ai' && generating && index === messages.length - 1 && !msg.content" class="typing-indicator">
                 <LoadingOutlined /> 正在生成您的应用，这可能需要一点时间...
               </div>
-              <div v-else-if="msg.role === 'ai'" class="markdown-body" v-html="marked.parse(msg.content || ' ')">
-              </div>
+              <MarkdownViewer v-else-if="msg.role === 'ai'" :content="msg.content || ' '" />
               <div v-else class="user-text">
                 {{ msg.content }}
               </div>
@@ -359,6 +357,7 @@ onMounted(() => {
   border-right: 1px solid #f0f0f0;
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .messages-area {
@@ -374,6 +373,7 @@ onMounted(() => {
   display: flex;
   gap: 12px;
   max-width: 100%;
+  min-width: 0;
 }
 
 .message-row.user {
@@ -408,6 +408,7 @@ onMounted(() => {
   line-height: 1.6;
   word-wrap: break-word;
   max-width: calc(100% - 44px);
+  min-width: 0;
 }
 
 .message-row.user .message-bubble {
@@ -485,32 +486,5 @@ onMounted(() => {
 .markdown-body :deep(p) {
   margin-bottom: 0.8em;
 }
-.markdown-body :deep(pre) {
-  background: #282c34;
-  color: #abb2bf;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  margin-bottom: 1em;
-}
-.markdown-body :deep(code) {
-  background: rgba(0,0,0,0.05);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-family: Consolas, Monaco, 'Andale Mono', monospace;
-  font-size: 13px;
-}
-.markdown-body :deep(pre code) {
-  background: transparent;
-  padding: 0;
-}
-.markdown-body :deep(ul), .markdown-body :deep(ol) {
-  padding-left: 1.5em;
-  margin-bottom: 1em;
-}
-.markdown-body :deep(li) {
-  margin-bottom: 0.25em;
-}
+
 </style>
