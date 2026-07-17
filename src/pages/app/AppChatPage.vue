@@ -5,6 +5,7 @@ import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
 import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined } from '@ant-design/icons-vue'
 import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle } from '@/api/appController'
+import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
@@ -42,7 +43,9 @@ const deployKeyForModal = ref('')
 const chatInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 
-const messages = ref<{ role: 'user' | 'ai'; content: string }[]>([])
+const messages = ref<{ id?: number, role: 'user' | 'ai', content: string, createTime?: string }[]>([])
+const historyLoading = ref(false)
+const hasMoreHistory = ref(false)
 
 const isEditingTitle = ref(false)
 const editTitleValue = ref('')
@@ -105,26 +108,67 @@ const loadAppInfo = async () => {
     const res = await getAppVoById({ id: appId })
     if (res.data.code === 0 && res.data.data) {
       appInfo.value = res.data.data
-      
-      // 判断是否已经有生成的内容
-      if (appInfo.value.codeGenType) {
-        const previewBaseUrl = import.meta.env.VITE_PREVIEW_BASE_URL || 'http://localhost:8080/api/static'
-        iframeUrl.value = `${previewBaseUrl}/${appInfo.value.codeGenType}_${appInfo.value.id}/`
-      }
-
-      // 如果有 auto=1 参数，并且不携带 view=1，说明是从创建页跳转过来的新应用，自动触发一次对话
-      // 如果有 view=1 参数，即使 auto=1，也不会默认发送
-      if (route.query.auto === '1' && route.query.view !== '1' && messages.value.length === 0) {
-        messages.value.push({ role: 'user', content: appInfo.value.initPrompt || '开始生成' })
-        // 移除参数，避免刷新重复触发
-        router.replace(`/app/chat/${appId}`)
-        await doGenerate(appInfo.value.initPrompt || '开始生成')
-      }
     } else {
       message.error(res.data.message || '获取应用信息失败')
     }
   } catch (error: any) {
     message.error('请求应用信息异常')
+  }
+}
+
+const loadHistory = async (lastCreateTime?: string) => {
+  historyLoading.value = true
+  try {
+    const res = await listAppChatHistory({ appId, pageSize: 10, lastCreateTime })
+    if (res.data.code === 0 && res.data.data?.records) {
+      const records = res.data.data.records
+      
+      const formatted: any[] = records.map(r => ({
+        id: r.id,
+        role: (r.messageType && r.messageType.toLowerCase() === 'user') ? 'user' : 'ai',
+        content: r.message || '',
+        createTime: r.createTime
+      }))
+      
+      formatted.sort((a, b) => new Date(a.createTime).getTime() - new Date(b.createTime).getTime())
+      
+      if (lastCreateTime) {
+        messages.value = [...formatted, ...messages.value]
+      } else {
+        messages.value = formatted
+        scrollToBottom()
+      }
+      
+      hasMoreHistory.value = records.length >= 10
+    }
+  } catch (e) {
+    message.error('加载历史记录失败')
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+const handleLoadMore = () => {
+  if (messages.value.length > 0) {
+    loadHistory(messages.value[0].createTime)
+  }
+}
+
+const initPage = async () => {
+  await Promise.all([loadAppInfo(), loadHistory()])
+  
+  if (appInfo.value) {
+    // 进入页面时，如果 app 有至少 2 条对话记录，也展示对应的网站
+    if (appInfo.value.codeGenType && messages.value.length >= 2) {
+      const previewBaseUrl = import.meta.env.VITE_PREVIEW_BASE_URL || 'http://localhost:8080/api/static'
+      iframeUrl.value = `${previewBaseUrl}/${appInfo.value.codeGenType}_${appInfo.value.id}/`
+    }
+    
+    // 移除之前页面 url 的 view 参数相关的逻辑，如果是自己的 app，并且没有对话历史，才自动将 initPrompt 作为第一条消息触发对话
+    if (isCreator.value && messages.value.length === 0 && appInfo.value.initPrompt) {
+      messages.value.push({ role: 'user', content: appInfo.value.initPrompt })
+      await doGenerate(appInfo.value.initPrompt)
+    }
   }
 }
 
@@ -247,7 +291,7 @@ const visitWebsite = () => {
 }
 
 onMounted(() => {
-  loadAppInfo()
+  initPage()
 })
 </script>
 
@@ -301,6 +345,9 @@ onMounted(() => {
       <!-- 左侧对话区 -->
       <div class="chat-panel">
         <div class="messages-area" ref="messagesContainer">
+          <div v-if="hasMoreHistory" class="load-more-wrapper">
+            <a-button type="link" @click="handleLoadMore" :loading="historyLoading">加载更多</a-button>
+          </div>
           <div v-for="(msg, index) in messages" :key="index" :class="['message-row', msg.role]">
             <div v-if="msg.role === 'ai'" class="avatar ai-avatar">
               <img src="@/assets/logo.png" alt="ai" />
@@ -495,6 +542,11 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.load-more-wrapper {
+  text-align: center;
+  margin-bottom: 8px;
 }
 
 .message-row {

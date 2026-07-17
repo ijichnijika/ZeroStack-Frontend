@@ -37,6 +37,15 @@ const router = createRouter({
             needAdmin: true,
           },
         },
+        {
+          path: 'admin/chat-manage',
+          name: 'chatManage',
+          component: () => import('../pages/admin/ChatManagePage.vue'),
+          meta: {
+            title: '对话管理',
+            needAdmin: true,
+          },
+        },
 
         {
           path: 'app/edit/:id',

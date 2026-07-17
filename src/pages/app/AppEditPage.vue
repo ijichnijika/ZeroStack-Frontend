@@ -14,6 +14,7 @@ const userStore = useUserStore()
 const appId = route.params.id as any
 const loading = ref(false)
 const submitLoading = ref(false)
+const deployBaseUrl = import.meta.env.VITE_DEPLOY_BASE_URL || 'http://localhost'
 
 const appInfo = ref<API.AppVO | null>(null)
 
@@ -203,7 +204,7 @@ onMounted(() => {
             {{ appInfo?.deployedTime ? dayjs(appInfo.deployedTime).format('YYYY-MM-DD HH:mm:ss') : '-' }}
           </a-descriptions-item>
           <a-descriptions-item label="访问链接">
-            <a v-if="appInfo?.deployKey" :href="`${import.meta.env.VITE_DEPLOY_BASE_URL || 'http://localhost'}/${appInfo.deployKey}`" target="_blank">查看预览</a>
+            <a v-if="appInfo?.deployKey" :href="`${deployBaseUrl}/${appInfo.deployKey}`" target="_blank">查看预览</a>
             <span v-else>-</span>
           </a-descriptions-item>
         </a-descriptions>
