@@ -189,7 +189,10 @@ const handleSend = async () => {
   messages.value.push({ role: 'user', content: text })
   scrollToBottom()
   
-  await doGenerate(text)
+  // 延迟触发生成，确保 Vue 完成对输入框清空的渲染，避免与接下来 disabled 状态同步冲突
+  setTimeout(async () => {
+    await doGenerate(text)
+  }, 10)
 }
 
 const doGenerate = async (text: string) => {
