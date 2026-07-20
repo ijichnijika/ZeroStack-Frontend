@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { getDeployUrl } from '@/config/env'
 import { useRouter } from 'vue-router'
 import { MessageOutlined, GlobalOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
@@ -26,8 +27,7 @@ const goChat = (appId: number) => {
 }
 
 const openPreview = (deployKey: string) => {
-  const deployBaseUrl = import.meta.env.VITE_DEPLOY_BASE_URL || 'http://localhost'
-  window.open(`${deployBaseUrl}/${deployKey}`, '_blank')
+  window.open(getDeployUrl(deployKey), '_blank')
 }
 </script>
 

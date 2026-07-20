@@ -8,7 +8,7 @@ import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle } from '@/ap
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
-import { getStaticPreviewUrl, API_BASE_URL, DEPLOY_BASE_URL } from '@/config/env'
+import { getStaticPreviewUrl, API_BASE_URL, getDeployUrl } from '@/config/env'
 
 const route = useRoute()
 const router = useRouter()
@@ -320,7 +320,7 @@ const handleDeploy = async () => {
 
 const copyLink = async () => {
   try {
-    await navigator.clipboard.writeText(`${DEPLOY_BASE_URL}/${deployKeyForModal.value}`)
+    await navigator.clipboard.writeText(getDeployUrl(deployKeyForModal.value))
     message.success('链接已复制到剪贴板')
   } catch (err) {
     message.error('复制失败')
@@ -328,7 +328,7 @@ const copyLink = async () => {
 }
 
 const visitWebsite = () => {
-  window.open(`${DEPLOY_BASE_URL}/${deployKeyForModal.value}`, '_blank')
+  window.open(getDeployUrl(deployKeyForModal.value), '_blank')
 }
 
 onMounted(() => {

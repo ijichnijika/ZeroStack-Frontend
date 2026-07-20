@@ -13,7 +13,7 @@ export const DEPLOY_BASE_URL = import.meta.env.VITE_DEPLOY_BASE_URL || 'http://l
 
 // 获取部署应用的完整 URL
 export const getDeployUrl = (deployKey: string) => {
-  return `${DEPLOY_BASE_URL}/${deployKey}`
+  return `${DEPLOY_BASE_URL}/${deployKey}/`
 }
 
 // 获取静态资源预览 URL
