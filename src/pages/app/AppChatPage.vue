@@ -8,12 +8,11 @@ import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle } from '@/ap
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
+import { getStaticPreviewUrl, API_BASE_URL, DEPLOY_BASE_URL } from '@/config/env'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-
-const deployBaseUrl = import.meta.env.VITE_DEPLOY_BASE_URL || 'http://localhost'
 
 const appId = route.params.id as any
 
@@ -160,8 +159,7 @@ const initPage = async () => {
   if (appInfo.value) {
     // 进入页面时，如果 app 有至少 2 条对话记录，也展示对应的网站
     if (appInfo.value.codeGenType && messages.value.length >= 2) {
-      const previewBaseUrl = import.meta.env.VITE_PREVIEW_BASE_URL || 'http://localhost:8080/api/static'
-      iframeUrl.value = `${previewBaseUrl}/${appInfo.value.codeGenType}_${appInfo.value.id}/`
+      iframeUrl.value = getStaticPreviewUrl(appInfo.value.codeGenType, appInfo.value.id!)
     }
     
     // 移除之前页面 url 的 view 参数相关的逻辑，如果是自己的 app，并且没有对话历史，才自动将 initPrompt 作为第一条消息触发对话
@@ -195,14 +193,38 @@ const handleSend = async () => {
   }, 10)
 }
 
+/**
+ * 轮询等待预览 URL 可访问（用于 Vue 项目异步构建场景）
+ * 每 5 秒探测一次，最多等待 10 分钟
+ */
+const pollUntilPreviewReady = (previewUrl: string, maxRetries = 120, intervalMs = 5000) => {
+  let retries = 0
+  const timer = setInterval(async () => {
+    retries++
+    try {
+      const res = await fetch(previewUrl, { method: 'HEAD', cache: 'no-cache' })
+      if (res.ok) {
+        clearInterval(timer)
+        iframeUrl.value = previewUrl
+        message.success('Vue 项目构建完成，预览已加载！')
+      }
+    } catch (_) {
+      // 还未就绪，继续等待
+    }
+    if (retries >= maxRetries) {
+      clearInterval(timer)
+      message.warning('构建超时，请稍后手动刷新页面查看预览')
+    }
+  }, intervalMs)
+}
+
 const doGenerate = async (text: string) => {
   generating.value = true
   const aiMessageIndex = messages.value.length
   messages.value.push({ role: 'ai', content: '' })
 
   try {
-    const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api'
-    const url = `${apiBaseUrl}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}`
+    const url = `${API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}`
     const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.onmessage = (event) => {
@@ -231,11 +253,23 @@ const doGenerate = async (text: string) => {
       eventSource.close()
       scrollToBottom()
       
-      // 生成完成后，刷新下状态（此时不自动部署，需用户手动点击右上角部署按钮）
+      // 生成完成后，刷新下状态
       try {
         const res = await getAppVoById({ id: appId })
         if (res.data.code === 0 && res.data.data) {
           appInfo.value = res.data.data
+          const codeGenType = appInfo.value.codeGenType
+          if (codeGenType) {
+            const previewUrl = getStaticPreviewUrl(codeGenType, appInfo.value.id!)
+            if (codeGenType === 'vue_project') {
+              // Vue 项目需要后台异步构建（npm install + npm run build），
+              // done 事件触发时 dist 可能还未生成，轮询等待
+              message.info('Vue 项目构建中，预览将在构建完成后自动加载...')
+              pollUntilPreviewReady(previewUrl)
+            } else {
+              iframeUrl.value = previewUrl
+            }
+          }
         }
       } catch (e) {
         console.error(e)
@@ -270,6 +304,10 @@ const handleDeploy = async () => {
       await loadAppInfo()
       deployKeyForModal.value = appInfo.value?.deployKey || ''
       deploySuccessModalVisible.value = true
+      // 部署成功后更新预览区域
+      if (appInfo.value?.codeGenType) {
+        iframeUrl.value = getStaticPreviewUrl(appInfo.value.codeGenType, appInfo.value.id!)
+      }
     } else {
       message.error(res.data.message || '部署失败')
     }
@@ -282,7 +320,7 @@ const handleDeploy = async () => {
 
 const copyLink = async () => {
   try {
-    await navigator.clipboard.writeText(`${deployBaseUrl}/${deployKeyForModal.value}`)
+    await navigator.clipboard.writeText(`${DEPLOY_BASE_URL}/${deployKeyForModal.value}`)
     message.success('链接已复制到剪贴板')
   } catch (err) {
     message.error('复制失败')
@@ -290,7 +328,7 @@ const copyLink = async () => {
 }
 
 const visitWebsite = () => {
-  window.open(`${deployBaseUrl}/${deployKeyForModal.value}`, '_blank')
+  window.open(`${DEPLOY_BASE_URL}/${deployKeyForModal.value}`, '_blank')
 }
 
 onMounted(() => {
