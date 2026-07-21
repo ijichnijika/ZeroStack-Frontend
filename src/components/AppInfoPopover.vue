@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { UserOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
+import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
 
 const props = defineProps({
   appInfo: {
@@ -32,6 +33,15 @@ const emit = defineEmits(['edit', 'delete'])
         <div class="info-section">
           <div class="info-label">创建时间</div>
           <div class="info-value">{{ appInfo?.createTime ? dayjs(appInfo.createTime).format('YYYY-MM-DD HH:mm:ss') : '-' }}</div>
+        </div>
+        <div class="info-section">
+          <div class="info-label">生成类型</div>
+          <div class="info-value">
+            <a-tag v-if="appInfo?.codeGenType" :color="CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.color || 'blue'">
+              {{ CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.label || appInfo.codeGenType }}
+            </a-tag>
+            <span v-else>-</span>
+          </div>
         </div>
         
         <!-- 操作栏仅本人或管理员可见 -->

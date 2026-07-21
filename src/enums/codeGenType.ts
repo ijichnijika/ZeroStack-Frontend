@@ -14,13 +14,16 @@ export const CODE_GEN_TYPE_CONFIG = {
   [CodeGenTypeEnum.HTML]: {
     label: '原生 HTML 模式',
     value: CodeGenTypeEnum.HTML,
+    color: 'orange',
   },
   [CodeGenTypeEnum.MULTI_FILE]: {
     label: '原生多文件模式',
     value: CodeGenTypeEnum.MULTI_FILE,
+    color: 'cyan',
   },
   [CodeGenTypeEnum.VUE_PROJECT]: {
     label: 'Vue 项目模式',
     value: CodeGenTypeEnum.VUE_PROJECT,
+    color: 'green',
   },
 }

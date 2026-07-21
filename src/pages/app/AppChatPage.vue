@@ -9,6 +9,7 @@ import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import { getStaticPreviewUrl, API_BASE_URL, getDeployUrl } from '@/config/env'
+import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
 
 const route = useRoute()
 const router = useRouter()
@@ -380,6 +381,9 @@ onMounted(() => {
         </a-button>
         <div v-if="!isEditingTitle" class="title-display" @click="startEditTitle">
           <span class="app-name">{{ appInfo?.appName || '加载中...' }}</span>
+          <a-tag v-if="appInfo?.codeGenType" :color="CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.color || 'blue'" style="margin-left: 8px; border-radius: 4px;">
+            {{ CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.label || appInfo.codeGenType }}
+          </a-tag>
           <EditOutlined class="edit-icon" />
         </div>
         <div v-else class="title-edit">

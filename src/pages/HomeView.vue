@@ -62,6 +62,8 @@ const loadMyAppList = async () => {
     const res = await listMyAppVoByPage({
       pageNum: myAppPage.value,
       pageSize,
+      sortField: 'createTime',
+      sortOrder: 'descend'
     })
     if (res.data.code === 0 && res.data.data) {
       myAppList.value = res.data.data.records || []
@@ -77,6 +79,8 @@ const loadGoodAppList = async () => {
     const res = await listGoodAppVoByPage({
       pageNum: goodAppPage.value,
       pageSize,
+      sortField: 'createTime',
+      sortOrder: 'descend'
     })
     if (res.data.code === 0 && res.data.data) {
       goodAppList.value = res.data.data.records || []
