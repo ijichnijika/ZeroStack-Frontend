@@ -3,8 +3,8 @@ import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
-import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined } from '@ant-design/icons-vue'
-import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle } from '@/api/appController'
+import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined, DownloadOutlined } from '@ant-design/icons-vue'
+import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle, downloadAppCode } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
@@ -37,6 +37,7 @@ const appInfo = ref<API.AppVO | null>(null)
 const iframeUrl = ref('')
 const generating = ref(false)
 const deploying = ref(false)
+const downloading = ref(false)
 const deploySuccessModalVisible = ref(false)
 const deployKeyForModal = ref('')
 const chatInput = ref('')
@@ -159,7 +160,7 @@ const initPage = async () => {
   if (appInfo.value) {
     // 进入页面时，如果 app 有至少 2 条对话记录，也展示对应的网站
     if (appInfo.value.codeGenType && messages.value.length >= 2) {
-      iframeUrl.value = getStaticPreviewUrl(appInfo.value.codeGenType, appInfo.value.id!)
+      iframeUrl.value = `${getStaticPreviewUrl(appInfo.value.codeGenType, appInfo.value.id!)}?t=${Date.now()}`
     }
     
     // 移除之前页面 url 的 view 参数相关的逻辑，如果是自己的 app，并且没有对话历史，才自动将 initPrompt 作为第一条消息触发对话
@@ -205,7 +206,7 @@ const pollUntilPreviewReady = (previewUrl: string, maxRetries = 120, intervalMs 
       const res = await fetch(previewUrl, { method: 'HEAD', cache: 'no-cache' })
       if (res.ok) {
         clearInterval(timer)
-        iframeUrl.value = previewUrl
+        iframeUrl.value = `${previewUrl}?t=${Date.now()}`
         message.success('Vue 项目构建完成，预览已加载！')
       }
     } catch (_) {
@@ -267,7 +268,7 @@ const doGenerate = async (text: string) => {
               message.info('Vue 项目构建中，预览将在构建完成后自动加载...')
               pollUntilPreviewReady(previewUrl)
             } else {
-              iframeUrl.value = previewUrl
+              iframeUrl.value = `${previewUrl}?t=${Date.now()}`
             }
           }
         }
@@ -315,6 +316,39 @@ const handleDeploy = async () => {
     message.error('部署请求异常')
   } finally {
     deploying.value = false
+  }
+}
+
+const handleDownloadCode = async () => {
+  if (!appId || downloading.value) return
+  downloading.value = true
+  try {
+    const res = await downloadAppCode({ appId }, { responseType: 'blob' })
+    const blob = new Blob([res.data], { type: 'application/zip' })
+    
+    let filename = 'app-code.zip'
+    const contentDisposition = res.headers['content-disposition']
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?([^"]+)"?/)
+      if (match && match[1]) {
+        filename = decodeURIComponent(match[1])
+      }
+    }
+    
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+    
+    message.success('代码下载成功')
+  } catch (error: any) {
+    message.error('下载代码失败')
+  } finally {
+    downloading.value = false
   }
 }
 
@@ -373,6 +407,11 @@ onMounted(() => {
           @edit="handleEdit"
           @delete="handleDelete"
         />
+
+        <a-button class="download-btn" :loading="downloading" @click="handleDownloadCode" style="margin-right: 8px;" :disabled="!iframeUrl">
+          <template #icon><DownloadOutlined /></template>
+          下载代码
+        </a-button>
 
         <a-button type="primary" class="deploy-btn" :loading="deploying" @click="handleDeploy">
           <template #icon><CloudUploadOutlined /></template>

@@ -3,7 +3,7 @@ import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { userRegister } from '@/api/userController'
 import { message } from 'ant-design-vue'
-import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
+import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons-vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -71,6 +71,11 @@ const rules = {
 
 <template>
   <div class="register-container">
+    <a-button type="text" class="back-home-btn" @click="router.push('/')">
+      <template #icon><ArrowLeftOutlined /></template>
+      返回主页
+    </a-button>
+
     <div class="glass-card animate-fade-in">
       <!-- 左侧 3D 插画区域 -->
       <div class="left-section">
@@ -193,6 +198,29 @@ const rules = {
   min-height: 100vh;
   background: transparent;
   padding: 40px 24px;
+  position: relative;
+}
+
+.back-home-btn {
+  position: absolute;
+  top: 24px;
+  left: 24px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  color: #4b5563;
+  font-size: 15px;
+  padding: 8px 16px;
+  border-radius: 99px;
+  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.back-home-btn:hover {
+  color: #3b82f6;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .glass-card {

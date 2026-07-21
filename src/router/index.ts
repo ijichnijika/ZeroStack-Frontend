@@ -105,6 +105,15 @@ const router = createRouter({
         hideInMenu: true,
       },
     },
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'NotFound',
+      component: () => import('../pages/NotFoundPage.vue'),
+      meta: {
+        title: '页面不存在',
+        hideInMenu: true,
+      },
+    },
   ],
 })
 
