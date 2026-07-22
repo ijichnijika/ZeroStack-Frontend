@@ -3,13 +3,14 @@ import { ref, onMounted, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
-import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined, DownloadOutlined } from '@ant-design/icons-vue'
+import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined, DownloadOutlined, HighlightOutlined } from '@ant-design/icons-vue'
 import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle, downloadAppCode } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
-import { getStaticPreviewUrl, API_BASE_URL, getDeployUrl } from '@/config/env'
+import { getStaticPreviewUrl, API_BASE_URL, getDeployUrl, DEPLOY_BASE_URL } from '@/config/env'
 import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
+import { useVisualEditor } from '@/utils/useVisualEditor'
 
 const route = useRoute()
 const router = useRouter()
@@ -43,6 +44,19 @@ const deploySuccessModalVisible = ref(false)
 const deployKeyForModal = ref('')
 const chatInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
+// 预览 iframe 的模板引用
+const previewIframeRef = ref<HTMLIFrameElement | null>(null)
+
+// 可视化编辑器
+const {
+  isEditMode,
+  selectedElement,
+  toggleEditMode,
+  exitEditMode,
+  clearSelectedElement,
+  buildElementPromptSuffix,
+  onIframeLoad,
+} = useVisualEditor()
 
 const messages = ref<{ id?: number, role: 'user' | 'ai', content: string, createTime?: string }[]>([])
 const historyLoading = ref(false)
@@ -183,10 +197,17 @@ const scrollToBottom = () => {
 const handleSend = async () => {
   if (!chatInput.value.trim() || generating.value || !isCreator.value) return
   
-  const text = chatInput.value.trim()
-  chatInput.value = ''
+  const rawText = chatInput.value.trim()
+  // 若处于可视化编辑模式且有选中元素，将元素信息追加到提示词
+  const elementSuffix = buildElementPromptSuffix()
+  const text = rawText + elementSuffix
   
-  messages.value.push({ role: 'user', content: text })
+  chatInput.value = ''
+  // 发送后退出编辑模式并清除选中
+  exitEditMode()
+  
+  // 消息列表展示原始文本（不含提示词追加部分）
+  messages.value.push({ role: 'user', content: rawText })
   scrollToBottom()
   
   // 延迟触发生成，确保 Vue 完成对输入框清空的渲染，避免与接下来 disabled 状态同步冲突
@@ -449,6 +470,33 @@ onMounted(() => {
         </div>
         
         <div class="input-area">
+          <!-- 选中元素信息提示 -->
+          <a-alert
+            v-if="selectedElement"
+            type="info"
+            show-icon
+            closable
+            class="selected-element-alert"
+            @close="clearSelectedElement"
+          >
+            <template #message>
+              <span class="alert-label">已选中元素：</span>
+              <code class="alert-tag">&lt;{{ selectedElement.tagName }}&gt;</code>
+              <template v-if="selectedElement.id">
+                <span class="alert-sep"> · </span>
+                <code class="alert-id">#{{ selectedElement.id }}</code>
+              </template>
+              <template v-if="selectedElement.className">
+                <span class="alert-sep"> · </span>
+                <code class="alert-class">.{{ selectedElement.className.split(' ').join('.') }}</code>
+              </template>
+              <template v-if="selectedElement.textContent">
+                <span class="alert-sep"> · </span>
+                <span class="alert-text">"{{ selectedElement.textContent.slice(0, 30) }}{{ selectedElement.textContent.length > 30 ? '…' : '' }}"</span>
+              </template>
+            </template>
+          </a-alert>
+
           <a-tooltip :title="!isCreator ? '无法在别人的作品下对话哦~' : ''" placement="top">
             <a-input
               v-model:value="chatInput"
@@ -458,6 +506,17 @@ onMounted(() => {
               :disabled="generating || !isCreator"
             >
               <template #suffix>
+                <a-tooltip :title="!iframeUrl ? '请先生成预览后再使用可视化编辑' : (isEditMode ? '退出编辑模式' : '进入可视化编辑模式')">
+                  <a-button
+                    :type="isEditMode ? 'primary' : 'default'"
+                    shape="circle"
+                    class="visual-edit-btn"
+                    :disabled="!iframeUrl || !isCreator"
+                    @click="toggleEditMode(previewIframeRef)"
+                  >
+                    <template #icon><HighlightOutlined /></template>
+                  </a-button>
+                </a-tooltip>
                 <a-button type="primary" shape="circle" @click="handleSend" :loading="generating" :disabled="!isCreator">
                   <template #icon><SendOutlined /></template>
                 </a-button>
@@ -468,12 +527,24 @@ onMounted(() => {
       </div>
 
       <!-- 右侧预览区 -->
-      <div class="preview-panel">
+      <div class="preview-panel" :class="{ 'edit-mode-active': isEditMode }">
         <div v-if="generating" class="preview-placeholder">
           <LoadingOutlined class="loading-icon" />
           <p>正在努力编写代码中，请稍候...</p>
         </div>
-        <iframe v-else-if="iframeUrl" :src="iframeUrl" class="preview-iframe" title="preview"></iframe>
+        <template v-else-if="iframeUrl">
+          <div v-if="isEditMode" class="edit-mode-banner">
+            <HighlightOutlined />
+            可视化编辑模式已开启 · 悬浮高亮，点击选中元素
+          </div>
+          <iframe
+            ref="previewIframeRef"
+            :src="iframeUrl"
+            class="preview-iframe"
+            title="preview"
+            @load="onIframeLoad(previewIframeRef!)"
+          ></iframe>
+        </template>
         <div v-else class="preview-placeholder">
           <img src="@/assets/logo.png" alt="logo" class="placeholder-logo" />
           <p>生成完毕后，请点击右上角【部署】按钮进行部署与预览</p>
@@ -490,7 +561,7 @@ onMounted(() => {
         
         <div style="display: flex; align-items: center; border: 1px solid #d9d9d9; border-radius: 6px; padding: 0 4px 0 12px; margin-bottom: 32px; height: 44px; background: #fafafa;">
           <span style="flex: 1; text-align: left; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            {{ deployBaseUrl }}/{{ deployKeyForModal }}
+            {{ DEPLOY_BASE_URL }}/{{ deployKeyForModal }}
           </span>
           <a-button type="text" @click="copyLink" style="color: #666;">
             <template #icon><CopyOutlined /></template>
@@ -749,6 +820,90 @@ onMounted(() => {
 }
 .markdown-body :deep(p) {
   margin-bottom: 0.8em;
+}
+
+/* ===== 可视化编辑器相关样式 ===== */
+
+/* 预览区进入编辑模式时的边框高亮 */
+.preview-panel.edit-mode-active {
+  outline: 2px solid #1890ff;
+  outline-offset: -2px;
+}
+
+/* 预览区顶部编辑模式提示条 */
+.edit-mode-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(24, 144, 255, 0.88);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* 让预览区为 relative，以便 banner 绝对定位 */
+.preview-panel {
+  position: relative;
+}
+
+/* 可视化编辑按钮与发送按钮之间留间距 */
+.visual-edit-btn {
+  margin-right: 6px;
+}
+
+/* 输入区选中元素 Alert */
+.selected-element-alert {
+  margin-bottom: 8px;
+  border-radius: 8px;
+}
+
+.alert-label {
+  font-weight: 500;
+  color: #333;
+  margin-right: 4px;
+}
+
+.alert-tag,
+.alert-id,
+.alert-class {
+  display: inline-block;
+  padding: 0 5px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+}
+
+.alert-tag {
+  background: #e6f7ff;
+  color: #0958d9;
+}
+
+.alert-id {
+  background: #fff7e6;
+  color: #d46b08;
+}
+
+.alert-class {
+  background: #f6ffed;
+  color: #389e0d;
+}
+
+.alert-sep {
+  color: #bbb;
+}
+
+.alert-text {
+  color: #595959;
+  font-style: italic;
+  font-size: 12px;
 }
 
 </style>
