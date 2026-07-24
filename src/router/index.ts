@@ -63,6 +63,7 @@ const router = createRouter({
           component: () => import('../pages/user/UserProfilePage.vue'),
           meta: {
             title: '个人中心',
+            hideInMenu: true,
             needLogin: true,
           },
         },
@@ -72,6 +73,7 @@ const router = createRouter({
           component: () => import('../pages/user/UserSettingsPage.vue'),
           meta: {
             title: '个人设置',
+            hideInMenu: true,
             needLogin: true,
           },
         },
