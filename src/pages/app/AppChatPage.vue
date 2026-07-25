@@ -63,24 +63,47 @@ const historyLoading = ref(false)
 const hasMoreHistory = ref(false)
 
 const parseMessageContent = (content: string) => {
-  if (!content) return { thinking: '', text: '' }
-  
-  const thinkStart = content.indexOf('<think>')
-  if (thinkStart === -1) return { thinking: '', text: content }
-  
-  const thinkEnd = content.indexOf('</think>')
-  if (thinkEnd === -1) {
-    return {
-      thinking: content.slice(thinkStart + 7).trim(),
-      text: content.slice(0, thinkStart).trim()
+  type Segment = { type: 'thinking' | 'text', content: string }
+  if (!content) return { segments: [] as Segment[] }
+
+  const segments: Segment[] = []
+  let remaining = content
+
+  while (remaining.length > 0) {
+    const thinkStart = remaining.indexOf('<think>')
+
+    if (thinkStart === -1) {
+      // 无更多 <think>，剩余全部为正文
+      const t = remaining.trim()
+      if (t) segments.push({ type: 'text', content: t })
+      break
+    }
+
+    // <think> 之前的内容归为正文
+    if (thinkStart > 0) {
+      const t = remaining.slice(0, thinkStart).trim()
+      if (t) segments.push({ type: 'text', content: t })
+    }
+
+    const afterOpen = remaining.slice(thinkStart + '<think>'.length)
+    const thinkEnd = afterOpen.indexOf('</think>')
+
+    if (thinkEnd !== -1) {
+      // 正常闭合的思考块
+      const t = afterOpen.slice(0, thinkEnd).trim()
+      if (t) segments.push({ type: 'thinking', content: t })
+      remaining = afterOpen.slice(thinkEnd + '</think>'.length)
+    } else {
+      // 未闭合（流式生成中）：剩余内容为正在进行的思考
+      const t = afterOpen.trim()
+      if (t) segments.push({ type: 'thinking', content: t })
+      break
     }
   }
-  
-  return {
-    thinking: content.slice(thinkStart + 7, thinkEnd).trim(),
-    text: (content.slice(0, thinkStart) + content.slice(thinkEnd + 8)).trim()
-  }
+
+  return { segments }
 }
+
 
 const isEditingTitle = ref(false)
 const editTitleValue = ref('')
@@ -482,22 +505,29 @@ onMounted(() => {
                 <LoadingOutlined /> 正在生成您的应用，这可能需要一点时间...
               </div>
               <template v-else-if="msg.role === 'ai'">
-                <div v-if="parseMessageContent(msg.content).thinking" class="thinking-block">
-                  <a-collapse :bordered="false" ghost>
-                    <a-collapse-panel key="1">
-                      <template #header>
-                        <span class="thinking-header">
-                          <RobotOutlined /> AI思考过程
-                          <LoadingOutlined v-if="generating && index === messages.length - 1 && msg.content.indexOf('</think>') === -1" style="margin-left: 8px;" />
-                        </span>
-                      </template>
-                      <div class="thinking-inner">
-                        <MarkdownViewer :content="parseMessageContent(msg.content).thinking" />
-                      </div>
-                    </a-collapse-panel>
-                  </a-collapse>
-                </div>
-                <MarkdownViewer v-if="parseMessageContent(msg.content).text" :content="parseMessageContent(msg.content).text" />
+                <!-- 按原始生成顺序交错渲染：思考块 → 正文 → 思考块 → 正文 ... -->
+                <template v-for="(seg, sIdx) in parseMessageContent(msg.content).segments" :key="sIdx">
+                  <div v-if="seg.type === 'thinking'" class="thinking-block">
+                    <a-collapse :bordered="false" ghost>
+                      <a-collapse-panel :key="String(sIdx)">
+                        <template #header>
+                          <span class="thinking-header">
+                            <RobotOutlined /> AI思考过程
+                            <!-- 最后一段且仍在生成中（未收到 </think>）时显示 loading -->
+                            <LoadingOutlined
+                              v-if="generating && index === messages.length - 1 && sIdx === parseMessageContent(msg.content).segments.length - 1"
+                              style="margin-left: 8px;"
+                            />
+                          </span>
+                        </template>
+                        <div class="thinking-inner">
+                          <MarkdownViewer :content="seg.content" />
+                        </div>
+                      </a-collapse-panel>
+                    </a-collapse>
+                  </div>
+                  <MarkdownViewer v-else-if="seg.content" :content="seg.content" />
+                </template>
               </template>
               <div v-else class="user-text">
                 {{ msg.content }}

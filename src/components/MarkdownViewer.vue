@@ -12,12 +12,15 @@ const props = defineProps({
   }
 })
 
-// Create a local instance to avoid HMR global pollution
 const markedInstance = new Marked(
   markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang) {
-      const language = hljs.getLanguage(lang) ? lang : 'plaintext'
+      let language = lang
+      if (language === 'vue') {
+        language = 'html'
+      }
+      language = hljs.getLanguage(language) ? language : 'plaintext'
       return hljs.highlight(code, { language }).value
     }
   })
@@ -181,7 +184,7 @@ onMounted(() => {
     transform: rotate(360deg);
   }
 }
-.spin-icon {
+.markdown-body :deep(.spin-icon) {
   animation: spin 1s linear infinite;
 }
 </style>
