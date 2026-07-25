@@ -62,6 +62,26 @@ const messages = ref<{ id?: number, role: 'user' | 'ai', content: string, create
 const historyLoading = ref(false)
 const hasMoreHistory = ref(false)
 
+const parseMessageContent = (content: string) => {
+  if (!content) return { thinking: '', text: '' }
+  
+  const thinkStart = content.indexOf('<think>')
+  if (thinkStart === -1) return { thinking: '', text: content }
+  
+  const thinkEnd = content.indexOf('</think>')
+  if (thinkEnd === -1) {
+    return {
+      thinking: content.slice(thinkStart + 7).trim(),
+      text: content.slice(0, thinkStart).trim()
+    }
+  }
+  
+  return {
+    thinking: content.slice(thinkStart + 7, thinkEnd).trim(),
+    text: (content.slice(0, thinkStart) + content.slice(thinkEnd + 8)).trim()
+  }
+}
+
 const isEditingTitle = ref(false)
 const editTitleValue = ref('')
 const generatingTitle = ref(false)
@@ -461,7 +481,24 @@ onMounted(() => {
               <div v-if="msg.role === 'ai' && generating && index === messages.length - 1 && !msg.content" class="typing-indicator">
                 <LoadingOutlined /> 正在生成您的应用，这可能需要一点时间...
               </div>
-              <MarkdownViewer v-else-if="msg.role === 'ai'" :content="msg.content || ' '" />
+              <template v-else-if="msg.role === 'ai'">
+                <div v-if="parseMessageContent(msg.content).thinking" class="thinking-block">
+                  <a-collapse :bordered="false" ghost>
+                    <a-collapse-panel key="1">
+                      <template #header>
+                        <span class="thinking-header">
+                          <RobotOutlined /> AI思考过程
+                          <LoadingOutlined v-if="generating && index === messages.length - 1 && msg.content.indexOf('</think>') === -1" style="margin-left: 8px;" />
+                        </span>
+                      </template>
+                      <div class="thinking-inner">
+                        <MarkdownViewer :content="parseMessageContent(msg.content).thinking" />
+                      </div>
+                    </a-collapse-panel>
+                  </a-collapse>
+                </div>
+                <MarkdownViewer v-if="parseMessageContent(msg.content).text" :content="parseMessageContent(msg.content).text" />
+              </template>
               <div v-else class="user-text">
                 {{ msg.content }}
               </div>
@@ -756,6 +793,36 @@ onMounted(() => {
   background: #ffffff;
   border: 1px solid #e8e8e8;
   border-top-left-radius: 4px;
+}
+
+.thinking-block {
+  margin-bottom: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e8e8e8;
+}
+.thinking-block :deep(.ant-collapse) {
+  background: transparent;
+}
+.thinking-block :deep(.ant-collapse-header) {
+  padding: 8px 12px !important;
+  color: #888;
+}
+.thinking-block :deep(.ant-collapse-content > .ant-collapse-content-box) {
+  padding: 0;
+}
+.thinking-header {
+  font-size: 13px;
+  color: #888;
+}
+.thinking-inner {
+  padding: 0 12px 12px 12px;
+  color: #666;
+  font-size: 13px;
+}
+.thinking-inner :deep(*) {
+  font-size: 13px !important;
+  color: #666 !important;
 }
 
 .input-area {

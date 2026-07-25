@@ -26,7 +26,23 @@ const markedInstance = new Marked(
 const parsedHtml = ref('')
 
 const processContent = (text: string) => {
-  return text.replace(/\[工具调用\]\s*(.*?)(?=\n|$)/g, (match, action) => {
+  const executedCounts: Record<string, number> = {}
+  const executedRegex = /\[工具调用\]\s*([^\s]+)/g
+  let match
+  while ((match = executedRegex.exec(text)) !== null) {
+    const action = match[1]
+    executedCounts[action] = (executedCounts[action] || 0) + 1
+  }
+
+  let result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
+    if (executedCounts[action] > 0) {
+      executedCounts[action]--
+      return '\n\n'
+    }
+    return `\n\n[未完成的工具] ${action}\n\n`
+  })
+
+  return result.replace(/\[(?:工具调用|未完成的工具)\]\s*(.*?)(?=\n|$)/g, (match, action) => {
     const parts = action.trim().split(/\s+/)
     const actionName = parts[0]
     const filepath = parts.slice(1).join(' ') || ''
@@ -55,6 +71,9 @@ const processContent = (text: string) => {
     }
     
     if (iconSvg) {
+      if (match.startsWith('[未完成的工具]')) {
+        iconSvg = '<svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>'
+      }
       return `\n<div class="tool-call-row">
         <span class="tool-icon">${iconSvg}</span>
         <span class="tool-maintext">${actionName}</span>
@@ -156,5 +175,13 @@ onMounted(() => {
 }
 .markdown-body :deep(li) {
   margin-bottom: 0.25em;
+}
+@keyframes spin {
+  100% {
+    transform: rotate(360deg);
+  }
+}
+.spin-icon {
+  animation: spin 1s linear infinite;
 }
 </style>
