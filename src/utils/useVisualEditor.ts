@@ -222,7 +222,7 @@ export function useVisualEditor() {
             el.classList.remove('__ve_selected')
           )
         }
-      } catch (_) {}
+      } catch {}
     }
   }
 

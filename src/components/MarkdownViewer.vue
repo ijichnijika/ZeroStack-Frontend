@@ -117,7 +117,7 @@ onMounted(() => {
 
 <style scoped>
 .markdown-body :deep(.tool-call-row) {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 14px;

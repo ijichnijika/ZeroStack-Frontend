@@ -17,7 +17,7 @@ export const useUserStore = defineStore('user', () => {
         // 未登录或获取失败，置为空对象
         loginUser.value = {}
       }
-    } catch (error) {
+    } catch {
       loginUser.value = {}
     }
   }

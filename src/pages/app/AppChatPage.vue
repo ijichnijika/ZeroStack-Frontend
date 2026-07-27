@@ -37,6 +37,7 @@ const handleDelete = async () => {
 }
 const appInfo = ref<API.AppVO | null>(null)
 const iframeUrl = ref('')
+const buildStatusText = ref('')
 const generating = ref(false)
 const deploying = ref(false)
 const downloading = ref(false)
@@ -260,28 +261,34 @@ const handleSend = async () => {
 }
 
 /**
- * 轮询等待预览 URL 可访问（用于 Vue 项目异步构建场景）
- * 每 5 秒探测一次，最多等待 10 分钟
+ * 监听 Vue 项目异步构建进度（SSE）
  */
-const pollUntilPreviewReady = (previewUrl: string, maxRetries = 120, intervalMs = 5000) => {
-  let retries = 0
-  const timer = setInterval(async () => {
-    retries++
-    try {
-      const res = await fetch(previewUrl, { method: 'HEAD', cache: 'no-cache' })
-      if (res.ok) {
-        clearInterval(timer)
-        iframeUrl.value = `${previewUrl}?t=${Date.now()}`
-        message.success('Vue 项目构建完成，预览已加载！')
-      }
-    } catch (_) {
-      // 还未就绪，继续等待
+const listenToBuildStatus = (appId: string | number, previewUrl: string) => {
+  const url = `${API_BASE_URL}/app/build/status/stream?appId=${appId}`
+  const eventSource = new EventSource(url, { withCredentials: true })
+
+  eventSource.addEventListener('status', (event) => {
+    buildStatusText.value = event.data
+  })
+
+  eventSource.addEventListener('done', (event) => {
+    const data = event.data
+    eventSource.close()
+    if (data === 'Success') {
+      message.success('Vue 项目构建完成，预览已加载！')
+      iframeUrl.value = `${previewUrl}?t=${Date.now()}`
+      buildStatusText.value = ''
+    } else {
+      message.error(data || '构建失败')
+      buildStatusText.value = '构建失败，请重试'
     }
-    if (retries >= maxRetries) {
-      clearInterval(timer)
-      message.warning('构建超时，请稍后手动刷新页面查看预览')
-    }
-  }, intervalMs)
+  })
+
+  eventSource.onerror = () => {
+    eventSource.close()
+    message.error('获取构建状态异常')
+    buildStatusText.value = '构建异常'
+  }
 }
 
 const doGenerate = async (text: string) => {
@@ -329,9 +336,9 @@ const doGenerate = async (text: string) => {
             const previewUrl = getStaticPreviewUrl(codeGenType, appInfo.value.id!)
             if (codeGenType === 'vue_project') {
               // Vue 项目需要后台异步构建（npm install + npm run build），
-              // done 事件触发时 dist 可能还未生成，轮询等待
-              message.info('Vue 项目构建中，预览将在构建完成后自动加载...')
-              pollUntilPreviewReady(previewUrl)
+              // 通过 SSE 监听构建状态
+              buildStatusText.value = '准备构建...'
+              listenToBuildStatus(appInfo.value.id!, previewUrl)
             } else {
               iframeUrl.value = `${previewUrl}?t=${Date.now()}`
             }
@@ -598,6 +605,10 @@ onMounted(() => {
         <div v-if="generating" class="preview-placeholder">
           <LoadingOutlined class="loading-icon" />
           <p>正在努力编写代码中，请稍候...</p>
+        </div>
+        <div v-else-if="buildStatusText" class="preview-placeholder">
+          <LoadingOutlined class="loading-icon" />
+          <p>{{ buildStatusText }}</p>
         </div>
         <template v-else-if="iframeUrl">
           <div v-if="isEditMode" class="edit-mode-banner">
