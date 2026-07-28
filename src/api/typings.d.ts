@@ -163,6 +163,7 @@ declare namespace API {
   type chatToGenCodeParams = {
     appId: number
     message: string
+    agent?: boolean
   }
 
   type DeleteRequest = {
@@ -241,6 +242,14 @@ declare namespace API {
 
   type serveStaticResourceParams = {
     deployKey: string
+  }
+
+  type SseEmitter = {
+    timeout?: number
+  }
+
+  type streamBuildStatusParams = {
+    appId: number
   }
 
   type User = {

@@ -9,6 +9,7 @@ import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
 import AppCard from '@/components/AppCard.vue'
+import AgentSwitch from '@/components/AgentSwitch.vue'
 
 dayjs.extend(relativeTime)
 dayjs.locale('zh-cn')
@@ -18,6 +19,7 @@ const userStore = useUserStore()
 
 const prompt = ref('')
 const submitting = ref(false)
+const useAgent = ref(false) // 默认不开启 agent 模式
 
 const handleAdd = async () => {
   if (!prompt.value.trim()) {
@@ -34,7 +36,7 @@ const handleAdd = async () => {
     const res = await addApp({ initPrompt: prompt.value })
     if (res.data.code === 0 && res.data.data) {
       message.success('创建成功')
-      router.push(`/app/chat/${res.data.data}?auto=1`)
+      router.push(`/app/chat/${res.data.data}?auto=1&agent=${useAgent.value}`)
     } else {
       message.error(res.data.message || '创建失败')
     }
@@ -166,17 +168,20 @@ const goChat = (appId: number) => {
           class="prompt-input"
           @pressEnter.prevent="handleAdd"
         />
-        <div class="input-actions">
-          <div class="input-tags">
-            <a-tag @click="prompt = '帮我生成一个极简风格的个人博客网站，包含首页、文章列表页和文章详情页。首页需要展示最新的5篇文章和个人简介，整体色调以黑白灰为主，支持移动端自适应，排版要清晰舒适，符合现代审美。'">极简个人博客</a-tag>
-            <a-tag @click="prompt = '创建一个SaaS产品的企业官网，需要有吸引人的首屏，包含产品特性介绍、客户评价轮播图、详细的定价方案（分基础版、专业版、企业版），以及底部的联系我们表单。整体风格专业、现代、有科技感。'">SaaS企业官网</a-tag>
-            <a-tag @click="prompt = '开发一个电商后台管理系统的首页数据看板。需要包含今日营业额、新增用户数、订单总数等核心指标统计卡片，以及订单趋势折线图、商品分类占比饼图。界面设计需要专业现代，使用经典的侧边栏加顶部导航布局。'">电商数据看板</a-tag>
-            <a-tag @click="prompt = '设计一个暗黑模式的程序员社区交流页面。包含顶部导航栏（支持全局搜索和快捷发布）、左侧边栏（热门话题分类）、主体区域为动态列表（展示帖子标题、摘要、作者头像、点赞数和评论数），风格极客。'">暗黑极客社区</a-tag>
+          <div class="input-actions">
+            <div class="input-tags">
+              <a-tag @click="prompt = '帮我生成一个极简风格的个人博客网站，包含首页、文章列表页和文章详情页。首页需要展示最新的5篇文章和个人简介，整体色调以黑白灰为主，支持移动端自适应，排版要清晰舒适，符合现代审美。'">极简个人博客</a-tag>
+              <a-tag @click="prompt = '创建一个SaaS产品的企业官网，需要有吸引人的首屏，包含产品特性介绍、客户评价轮播图、详细的定价方案（分基础版、专业版、企业版），以及底部的联系我们表单。整体风格专业、现代、有科技感。'">SaaS企业官网</a-tag>
+              <a-tag @click="prompt = '开发一个电商后台管理系统的首页数据看板。需要包含今日营业额、新增用户数、订单总数等核心指标统计卡片，以及订单趋势折线图、商品分类占比饼图。界面设计需要专业现代，使用经典的侧边栏加顶部导航布局。'">电商数据看板</a-tag>
+              <a-tag @click="prompt = '设计一个暗黑模式的程序员社区交流页面。包含顶部导航栏（支持全局搜索和快捷发布）、左侧边栏（热门话题分类）、主体区域为动态列表（展示帖子标题、摘要、作者头像、点赞数和评论数），风格极客。'">暗黑极客社区</a-tag>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <AgentSwitch v-model:checked="useAgent" />
+              <a-button type="primary" shape="circle" size="large" class="submit-btn" :loading="submitting" @click="handleAdd">
+                <template #icon><ArrowUpOutlined /></template>
+              </a-button>
+            </div>
           </div>
-          <a-button type="primary" shape="circle" size="large" class="submit-btn" :loading="submitting" @click="handleAdd">
-            <template #icon><ArrowUpOutlined /></template>
-          </a-button>
-        </div>
       </div>
     </div>
 

@@ -37,7 +37,7 @@ const processContent = (text: string) => {
     executedCounts[action] = (executedCounts[action] || 0) + 1
   }
 
-  const result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
+  let result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
     if (executedCounts[action] > 0) {
       executedCounts[action]--
       return '\n\n'
@@ -45,7 +45,7 @@ const processContent = (text: string) => {
     return `\n\n[未完成的工具] ${action}\n\n`
   })
 
-  return result.replace(/\[(?:工具调用|未完成的工具)\]\s*(.*?)(?=\n|$)/g, (match, action) => {
+  result = result.replace(/\[(?:工具调用|未完成的工具)\]\s*(.*?)(?=\n|$)/g, (match, action) => {
     const parts = action.trim().split(/\s+/)
     const actionName = parts[0]
     const filepath = parts.slice(1).join(' ') || ''
@@ -90,6 +90,45 @@ const processContent = (text: string) => {
       <span class="tool-maintext">${action}</span>
     </div>\n`
   })
+
+  // 处理工作流进度节点：匹配 `> 🚀 [初始化] 消息` 或 `> 🚀 **[初始化]** 消息`
+  result = result.replace(/(?:>|&gt;)\s*(🚀|✅|❌|🎉)\s*(?:\*\*)?\[(.*?)\](?:\*\*)?\s*([^\n\r]*)/g, (match, icon, stepName, message) => {
+    let iconSvg = icon
+    if (icon === '🚀') {
+      iconSvg = '<svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>'
+    } else if (icon === '✅') {
+      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+    } else if (icon === '❌') {
+      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#ff4d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
+    } else if (icon === '🎉') {
+      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#722ed1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
+    }
+
+    return `\n<div class="tool-call-row workflow-step">
+      <span class="tool-icon">${iconSvg}</span>
+      <span class="tool-maintext">[${stepName}]</span>
+      <span class="tool-subtext">${message}</span>
+    </div>\n`
+  })
+
+  // 处理最终完成提示，例如 `✅ Agent 已完成代码生成...`
+  result = result.replace(/(?:^|\n)(✅|❌|🎉)\s*(Agent[^\n\r]*)/g, (match, icon, message) => {
+    let iconSvg = icon
+    if (icon === '✅') {
+      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
+    } else if (icon === '❌') {
+      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#ff4d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
+    } else if (icon === '🎉') {
+      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#722ed1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
+    }
+
+    return `\n<div class="tool-call-row workflow-step">
+      <span class="tool-icon">${iconSvg}</span>
+      <span class="tool-maintext">${message}</span>
+    </div>\n`
+  })
+
+  return result
 }
 
 // Simple throttle to avoid lagging during fast streaming

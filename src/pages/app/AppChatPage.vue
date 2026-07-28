@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, computed } from 'vue'
+import { ref, onMounted, nextTick, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
@@ -11,12 +11,16 @@ import MarkdownViewer from '@/components/MarkdownViewer.vue'
 import { getStaticPreviewUrl, API_BASE_URL, getDeployUrl, DEPLOY_BASE_URL } from '@/config/env'
 import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
 import { useVisualEditor } from '@/utils/useVisualEditor'
+import AgentSwitch from '@/components/AgentSwitch.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const appId = route.params.id as any
+const appId = route.params.id as string
+
+// Agent 模式开关，从路由初始化，默认不开启
+const useAgent = ref(route.query.agent === 'true')
 
 const handleEdit = () => {
   router.push(`/app/edit/${appId}`)
@@ -59,6 +63,15 @@ const {
   onIframeLoad,
 } = useVisualEditor()
 
+// 监听可视化编辑模式，如果开启，则自动关闭 Agent
+watch(isEditMode, (newVal) => {
+  if (newVal) {
+    useAgent.value = false
+  }
+})
+
+// 添加上传图片状态
+const uploadLoading = ref(false)
 const messages = ref<{ id?: number, role: 'user' | 'ai', content: string, createTime?: string }[]>([])
 const historyLoading = ref(false)
 const hasMoreHistory = ref(false)
@@ -309,7 +322,8 @@ const doGenerate = async (text: string) => {
   messages.value.push({ role: 'ai', content: '' })
 
   try {
-    const url = `${API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}`
+    // 根据开关动态决定是否使用 agent
+    const url = `${API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}&agent=${useAgent.value}`
     const eventSource = new EventSource(url, { withCredentials: true })
 
     eventSource.onmessage = (event) => {
@@ -318,7 +332,22 @@ const doGenerate = async (text: string) => {
         try {
           const parsed = JSON.parse(dataStr)
           if (parsed.d !== undefined) {
-            messages.value[aiMessageIndex].content += parsed.d
+            try {
+              // 尝试解析 agent 模式返回的 WorkflowProgressMessage JSON
+              const dParsed = JSON.parse(parsed.d)
+              if (dParsed.type === 'workflow_progress') {
+                const icon = dParsed.stepNumber === -1 ? '❌' : (dParsed.stepName === '完成' ? '🎉' : (dParsed.stepNumber === 0 ? '🚀' : '✅'))
+                messages.value[aiMessageIndex].content += `\n> ${icon} **[${dParsed.stepName}]** ${dParsed.message}\n\n`
+              } else if (dParsed.type === 'ai_response' || dParsed.type === 'ai_thinking') {
+                // 如果是 AI 响应或思考过程，则提取出 data 字段追加
+                messages.value[aiMessageIndex].content += (dParsed.data || '')
+              } else {
+                messages.value[aiMessageIndex].content += parsed.d
+              }
+            } catch (e2) {
+              // 如果不是 JSON，说明是普通的非 agent 文本流，直接追加
+              messages.value[aiMessageIndex].content += parsed.d
+            }
           } else {
             messages.value[aiMessageIndex].content += dataStr
           }
@@ -606,6 +635,9 @@ onMounted(() => {
               :disabled="generating || !isCreator"
             >
               <template #suffix>
+                <div style="margin-right: 12px; display: flex; align-items: center;">
+                  <AgentSwitch v-model:checked="useAgent" :disabled="isEditMode" />
+                </div>
                 <a-tooltip :title="!iframeUrl ? '请先生成预览后再使用可视化编辑' : (isEditMode ? '退出编辑模式' : '进入可视化编辑模式')">
                   <a-button
                     :type="isEditMode ? 'primary' : 'default'"
