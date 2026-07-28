@@ -37,7 +37,7 @@ const processContent = (text: string) => {
     executedCounts[action] = (executedCounts[action] || 0) + 1
   }
 
-  let result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
+  const result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
     if (executedCounts[action] > 0) {
       executedCounts[action]--
       return '\n\n'

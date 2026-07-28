@@ -284,6 +284,18 @@ const listenToBuildStatus = (appId: string | number, previewUrl: string) => {
     }
   })
 
+  eventSource.addEventListener('business-error', (event: any) => {
+    try {
+      const errorData = JSON.parse(event.data)
+      message.error(errorData.message || '获取状态被拒绝')
+      buildStatusText.value = errorData.message || '操作受限'
+    } catch (e) {
+      message.error('获取状态受限')
+      buildStatusText.value = '操作受限'
+    }
+    eventSource.close()
+  })
+
   eventSource.onerror = () => {
     eventSource.close()
     message.error('获取构建状态异常')
@@ -351,6 +363,20 @@ const doGenerate = async (text: string) => {
 
     eventSource.addEventListener('done', () => {
       finishGeneration()
+    })
+
+    eventSource.addEventListener('business-error', (event: any) => {
+      try {
+        const errorData = JSON.parse(event.data)
+        message.error(errorData.message || '生成被拒绝')
+        messages.value[aiMessageIndex].content += `\n[${errorData.message || '操作受限'}]`
+      } catch (e) {
+        message.error('生成受限')
+        messages.value[aiMessageIndex].content += '\n[操作受限]'
+      }
+      generating.value = false
+      eventSource.close()
+      scrollToBottom()
     })
 
     eventSource.onerror = (error) => {
