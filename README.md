@@ -1,48 +1,79 @@
-# frontend
+# ZeroStack Frontend (前端应用)
 
-This template should help get you started developing with Vue 3 in Vite.
+ZeroStack 的现代化前端工程，基于 **Vue 3** (Composition API) 与 **TypeScript** 打造。
+这不仅是一个普通的内容管理系统，更是一个集成了 **Agent 可视化工作流**、**实时代码沙盒在线修改**、**一键部署预览**、**SSE 原生多段渲染** 的创新型 AI 交互终端界面。
 
-## Recommended IDE Setup
+---
 
-[VS Code](https://code.visualstudio.com/) + [Vue (Official)](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+## 🌟 详细功能特性 (Detailed Features)
 
-## Recommended Browser Setup
+### 1. 高级流式对话引擎 (SSE Chat & AI Core)
+- **原生 SSE 与 深度思考 (Deep Thinking) 解析渲染**：抛弃传统请求等待机制，采用流式获取。能够深度拦截解析大模型生成的 `<think>` 标签并实现原生多段式的 **折叠展开** 以及独立样式排版。
+- **业务异常无缝下发**：底层 SSE 监听器完美拦截后端的 `business-error`（例如遭遇频率限流、AI安全护栏失败等），弹出极客风提示而不导致界面崩溃或断线重连。
+- **智能一键生成标题**：对话新建应用时，利用后端 AI 一键从 Prompt 提炼出优雅的应用名称并实时刷新列表。
 
-- Chromium-based browsers (Chrome, Edge, Brave, etc.):
-  - [Vue.js devtools](https://chromewebstore.google.com/detail/vuejs-devtools/nhdogjmejiglipccpnnnanhbledajbpd)
-  - [Turn on Custom Object Formatter in Chrome DevTools](http://bit.ly/object-formatters)
-- Firefox:
-  - [Vue.js devtools](https://addons.mozilla.org/en-US/firefox/addon/vue-js-devtools/)
-  - [Turn on Custom Object Formatter in Firefox DevTools](https://fxdx.dev/firefox-devtools-custom-object-formatters/)
+### 2. Agent 进度透明与智能路由感知
+- **智能路由结果可视化**：能够精确捕获并渲染后端 AI 做出的**智能路由决定**（它是决定使用单文件 HTML 还是大型 VUE_PROJECT 脚手架）。
+- **Agent 工作流可视化 (`AgentSwitch`)**：开启 Agent 模式后，系统工作流中繁杂的后台处理步骤（如开始编译、一键打包中、发布中等）将转为特殊的 `WorkflowProgressMessage` 数据包，在前端通过 SVG 图标与美化列表逐级点亮。
 
-## Type Support for `.vue` Imports in TS
+### 3. 可视化修改与一键部署 (Live Edit & Deploy Sandbox)
+- **可视化实时预览沙盒 (`Iframe Sandbox`)**：聊天界面提供分栏式或全屏的实时应用预览窗口，生成的成果第一时间热挂载在沙盒中执行。
+- **可视化修改 (Live Editor)**：如果遇到不满意的地方，支持通过特殊入口进入可视化页面进行深度自定义调整以及与大模型结对修改。
+- **跨域轮询与一键部署呈现**：为解决后端 **Nginx 一键部署** 时产生的时间差或路径加载问题，系统设计了自动化跨域轮询心跳机制。前端自动探测服务器端口并在部署成功的第一时间完成页面渲染与刷新。
 
-TypeScript cannot handle type information for `.vue` imports by default, so we replace the `tsc` CLI with `vue-tsc` for type checking. In editors, we need [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) to make the TypeScript language service aware of `.vue` types.
+### 4. 强大的扩展生态：打包、COS 与用户管理
+- **源码一键 ZIP 下载**：全量支持由大模型智能生成的任意级别（单文件 / 多文件项目）应用的极速源码 ZIP 打包下载，保留项目原始层级。
+- **对话历史与云端协同**：历史对话和生成记录将自动进行云端持久化备份（同步落库）。聊天框内历史输入记录清空 Bug 已解决。
+- **全系管理后台架构**：内置基于角色验证的完整页面路由系统，支持个人设置中心、应用管理列表、全局聊天记录管理模块。
+- **快捷预设场景 (Quick Prompts)**：内置诸如 "SaaS企业官网"、"极客社区" 等复杂场景的一键体验标签。
 
-## Customize configuration
+---
 
-See [Vite Configuration Reference](https://vite.dev/config/).
+## 🛠️ 核心技术栈 (Core Tech Stack)
 
-## Project Setup
+- **视图框架**: `Vue 3` ( `<script setup>` 语法 )
+- **类型保证**: `TypeScript` (严苛的组件传参推断与接口强类型约束)
+- **构建效率**: `Vite` (极速冷启动与 HMR 热重载)
+- **UI 设计美学**: `Ant Design Vue` (经过大规模 CSS Token 覆盖，打造极简且暗黑的科技极客风格)
+- **状态与路由**: `Pinia` & `Vue Router 4`
+- **Markdown & 语法引擎**: 专属重构的 `MarkdownViewer`，安全过滤的同时提供优秀的代码高亮展现。
 
-```sh
+---
+
+## 🚀 快速启动指南 (Quick Start)
+
+### 1. 安装项目依赖
+请确保本地环境存在 Node.js (推荐 v18+)。
+
+```bash
+cd frontend
 npm install
 ```
 
-### Compile and Hot-Reload for Development
+### 2. 环境变量配置
+在 `src/config/env.ts` (或 `.env`) 中修改 API 映射。
+如果您需要在本地体验完整的**沙盒可视化修改**与**Nginx一键部署**，请配置正确的地址：
 
-```sh
+```typescript
+export const API_BASE_URL = 'http://localhost:8080/api'
+// 部署环境域名前缀，该域名必须由 Nginx 代理接管才能完成部署演示
+export const DEPLOY_BASE_URL = 'http://localhost:8080' 
+```
+
+### 3. 运行与开发
+```bash
 npm run dev
 ```
 
-### Type-Check, Compile and Minify for Production
+### 4. 代码打包与检查
+为了保证代码质量，所有组件引入了强校验。
+```bash
+# 执行强类型检查
+npm run type-check
 
-```sh
-npm run build
-```
-
-### Lint with [ESLint](https://eslint.org/)
-
-```sh
+# ESLint 纠偏
 npm run lint
+
+# 发布级别构建
+npm run build
 ```
