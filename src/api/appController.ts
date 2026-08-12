@@ -101,6 +101,21 @@ export async function chatToGenCode(
   })
 }
 
+/** 此处后端没有提供注释 POST /app/chat/gen/stop */
+export async function stopAppGenCode(
+  // 叠加生成的Param类型 (非body参数swagger默认没有生成对象)
+  params: { appId: string | number },
+  options?: { [key: string]: any }
+) {
+  return request<API.BaseResponseBoolean>('/app/chat/gen/stop', {
+    method: 'POST',
+    params: {
+      ...params,
+    },
+    ...(options || {}),
+  })
+}
+
 /** 此处后端没有提供注释 POST /app/chat/gen/title */
 export async function genAppTitle(body: API.AppGenTitleRequest, options?: { [key: string]: any }) {
   return request<API.BaseResponseString>('/app/chat/gen/title', {

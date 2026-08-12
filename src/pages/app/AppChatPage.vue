@@ -3,8 +3,8 @@ import { ref, onMounted, nextTick, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
-import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined, DownloadOutlined, HighlightOutlined } from '@ant-design/icons-vue'
-import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle, downloadAppCode } from '@/api/appController'
+import { ArrowLeftOutlined, CloudUploadOutlined, LoadingOutlined, SendOutlined, PictureOutlined, CheckCircleFilled, CopyOutlined, RobotOutlined, CheckOutlined, EditOutlined, DownloadOutlined, HighlightOutlined, PauseCircleOutlined } from '@ant-design/icons-vue'
+import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle, downloadAppCode, stopAppGenCode } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import AppInfoPopover from '@/components/AppInfoPopover.vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
@@ -271,6 +271,20 @@ const handleSend = async () => {
   setTimeout(async () => {
     await doGenerate(text)
   }, 10)
+}
+
+const handleStopGen = async () => {
+  if (!appId || !generating.value) return
+  try {
+    const res = await stopAppGenCode({ appId })
+    if (res.data?.code === 0) {
+      message.success('已发送停止指令')
+    } else {
+      message.error(res.data?.message || '停止失败')
+    }
+  } catch (error: any) {
+    message.error('停止异常: ' + error.message)
+  }
 }
 
 /**
@@ -649,8 +663,11 @@ onMounted(() => {
                     <template #icon><HighlightOutlined /></template>
                   </a-button>
                 </a-tooltip>
-                <a-button type="primary" shape="circle" @click="handleSend" :loading="generating" :disabled="!isCreator">
+                <a-button v-if="!generating" type="primary" shape="circle" @click="handleSend" :disabled="!isCreator">
                   <template #icon><SendOutlined /></template>
+                </a-button>
+                <a-button v-else type="primary" danger shape="circle" @click="handleStopGen" :disabled="!isCreator">
+                  <template #icon><PauseCircleOutlined /></template>
                 </a-button>
               </template>
             </a-input>
