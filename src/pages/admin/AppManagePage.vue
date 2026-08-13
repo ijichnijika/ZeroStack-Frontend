@@ -1,17 +1,19 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { SearchOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, StarOutlined, AppstoreOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { listAppVoByPageByAdmin, deleteAppByAdmin, updateAppByAdmin } from '@/api/appController'
+import { useAdminTable } from '@/composables/useAdminTable'
+import { formatDate } from '@/utils/formatDate'
+import { cleanEmptyStringParams } from '@/utils/cleanParams'
+import AdminPageHeader from '@/components/admin/AdminPageHeader.vue'
+import AdminSearchPanel from '@/components/admin/AdminSearchPanel.vue'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
 
 const router = useRouter()
 
 // --- 列表查询与分页 ---
-const loading = ref(false)
-const dataList = ref<API.AppVO[]>([])
-const total = ref(0)
-
 const searchParams = reactive<API.AppQueryRequest>({
   pageNum: 1,
   pageSize: 10,
@@ -23,96 +25,36 @@ const searchParams = reactive<API.AppQueryRequest>({
   userId: undefined,
 })
 
-const columns = [
-  {
-    title: 'ID',
-    dataIndex: 'id',
-    key: 'id',
-    width: 180,
-    ellipsis: true,
-  },
-  {
-    title: '封面',
-    dataIndex: 'cover',
-    key: 'cover',
-    width: 80,
-  },
-  {
-    title: '应用名称',
-    dataIndex: 'appName',
-    key: 'appName',
-    width: 250,
-    ellipsis: true,
-  },
-  {
-    title: '创建者',
-    key: 'creator',
-    width: 150,
-    ellipsis: true,
-  },
-  {
-    title: '优先级',
-    dataIndex: 'priority',
-    key: 'priority',
-    width: 80,
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'createTime',
-    key: 'createTime',
-    width: 150,
-  },
-  {
-    title: '操作',
-    key: 'action',
-    width: 250,
-  },
-]
-
-const fetchData = async () => {
-  loading.value = true
-  try {
-    const params: any = { ...searchParams }
-    Object.keys(params).forEach(key => {
-      if (params[key] === '') {
-        params[key] = undefined
+const { loading, dataList, total, fetchData, handleSearch, handleReset, handlePageChange } =
+  useAdminTable<API.AppVO, API.AppQueryRequest>(
+    searchParams,
+    async (params) => {
+      // 清理空字符串，防止后端将 '' 当作实际过滤条件
+      const res = await listAppVoByPageByAdmin(cleanEmptyStringParams(params))
+      if (res.data?.code !== 0) {
+        message.error(res.data?.message || '获取应用列表失败')
       }
-    })
-    const res = await listAppVoByPageByAdmin(params)
-    if (res.data?.code === 0 && res.data?.data) {
-      dataList.value = res.data.data.records || []
-      total.value = Number(res.data.data.totalRow) || 0
-    } else {
-      message.error(res.data?.message || '获取应用列表失败')
-    }
-  } catch (error: any) {
-    message.error(error.message || '网络异常')
-  } finally {
-    loading.value = false
-  }
-}
+      return { records: res.data?.data?.records, total: res.data?.data?.totalRow }
+    },
+    () => {
+      searchParams.appName = undefined
+      searchParams.id = undefined
+      searchParams.initPrompt = undefined
+      searchParams.codeGenType = undefined
+      searchParams.deployKey = undefined
+      searchParams.userId = undefined
+    },
+  )
 
-const handleSearch = () => {
-  searchParams.pageNum = 1
-  fetchData()
-}
-
-const handleReset = () => {
-  searchParams.appName = undefined
-  searchParams.id = undefined
-  searchParams.initPrompt = undefined
-  searchParams.codeGenType = undefined
-  searchParams.deployKey = undefined
-  searchParams.userId = undefined
-  searchParams.pageNum = 1
-  fetchData()
-}
-
-const handlePageChange = (page: number, pageSize: number) => {
-  searchParams.pageNum = page
-  searchParams.pageSize = pageSize
-  fetchData()
-}
+const columns = [
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 180, ellipsis: true },
+  { title: '封面', dataIndex: 'cover', key: 'cover', width: 80 },
+  { title: '应用名称', dataIndex: 'appName', key: 'appName', width: 250, ellipsis: true },
+  { title: '创建者', key: 'creator', width: 150, ellipsis: true },
+  { title: '优先级', dataIndex: 'priority', key: 'priority', width: 80 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 150 },
+  { title: '操作', key: 'action', width: 250 },
+]
 
 // --- 删除应用 ---
 const handleDelete = async (id: number) => {
@@ -129,7 +71,7 @@ const handleDelete = async (id: number) => {
   }
 }
 
-// --- 设为精选 ---
+// --- 设为精选（priority=99 为后端约定的精选标志位） ---
 const handleSetFeature = async (id: number) => {
   try {
     const res = await updateAppByAdmin({ id, priority: 99 })
@@ -146,15 +88,7 @@ const handleSetFeature = async (id: number) => {
 
 // --- 编辑跳转 ---
 const handleEdit = (id: number) => {
-  // 当前页面跳转到应用信息修改页进行编辑
   router.push(`/app/edit/${id}`)
-}
-
-// 格式化日期
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString()
 }
 
 onMounted(() => {
@@ -164,16 +98,12 @@ onMounted(() => {
 
 <template>
   <div class="app-manage-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2>应用管理看板</h2>
-        <p class="subtitle">管理系统内所有应用资源及精选推荐</p>
-      </div>
-    </div>
+    <!-- 页头：仅标题，无操作按钮 -->
+    <AdminPageHeader title="应用管理看板" subtitle="管理系统内所有应用资源及精选推荐" />
 
     <!-- 搜索筛选区域 -->
-    <div class="search-panel">
-      <a-form layout="inline" :model="searchParams" class="search-form">
+    <AdminSearchPanel>
+      <a-form layout="inline" :model="searchParams">
         <a-form-item label="应用ID">
           <a-input v-model:value="searchParams.id" placeholder="请输入应用ID" allow-clear />
         </a-form-item>
@@ -208,7 +138,7 @@ onMounted(() => {
           </a-space>
         </a-form-item>
       </a-form>
-    </div>
+    </AdminSearchPanel>
 
     <!-- 数据表格 -->
     <div class="table-container">
@@ -244,12 +174,18 @@ onMounted(() => {
 
           <template v-else-if="column.key === 'action'">
             <a-space size="middle">
-              <a-button type="link" size="small" @click="handleEdit(record.id)" class="edit-link">
+              <a-button type="link" size="small" class="edit-link" @click="handleEdit(record.id)">
                 <template #icon><EditOutlined /></template>
                 编辑
               </a-button>
-              
-              <a-button v-if="record.priority !== 99" type="link" size="small" @click="handleSetFeature(record.id)" style="color: #faad14;">
+
+              <a-button
+                v-if="record.priority !== 99"
+                type="link"
+                size="small"
+                class="feature-link"
+                @click="handleSetFeature(record.id)"
+              >
                 <template #icon><StarOutlined /></template>
                 精选
               </a-button>
@@ -272,17 +208,14 @@ onMounted(() => {
       </a-table>
 
       <!-- 分页组件 -->
-      <div class="pagination-wrapper">
-        <a-pagination
-          v-model:current="searchParams.pageNum"
-          v-model:pageSize="searchParams.pageSize"
-          :total="total"
-          :show-total="(totalNum: number) => `共 ${totalNum} 条记录`"
-          show-size-changer
-          show-quick-jumper
-          @change="handlePageChange"
-        />
-      </div>
+      <AdminPagination
+        :total="total"
+        :current="searchParams.pageNum!"
+        :page-size="searchParams.pageSize!"
+        @change="handlePageChange"
+        @update:current="searchParams.pageNum = $event"
+        @update:page-size="searchParams.pageSize = $event"
+      />
     </div>
   </div>
 </template>
@@ -292,51 +225,6 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 24px;
-}
-
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-  padding-bottom: 16px;
-}
-
-.header-left h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1f1f1f;
-  margin-bottom: 4px;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: #8c8c8c;
-  margin-bottom: 0;
-}
-
-.search-panel {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-}
-
-.search-form :deep(.ant-form-item) {
-  margin-bottom: 12px;
-  margin-right: 24px;
-}
-
-.search-form :deep(.ant-input),
-.search-form :deep(.ant-select-selector) {
-  background: rgba(255, 255, 255, 0.45) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-.search-form :deep(.ant-input:hover),
-.search-form :deep(.ant-select-selector:hover) {
-  border-color: #1890ff !important;
 }
 
 .table-container {
@@ -356,42 +244,16 @@ onMounted(() => {
   color: #40a9ff;
 }
 
+/* 精选按钮使用醒目的金色，与编辑/删除区分 */
+.feature-link {
+  color: #faad14;
+}
+
 .delete-link {
   color: #ff4d4f;
 }
 
 .delete-link:hover {
   color: #ff7875;
-}
-
-.pagination-wrapper {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 24px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  position: relative;
-  z-index: 10;
-}
-
-@media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
-  .search-form :deep(.ant-form-item) {
-    margin-right: 0;
-    width: 100%;
-    margin-bottom: 16px;
-  }
-  
-  .search-form :deep(.ant-form-item-control-input) {
-    width: 100%;
-  }
 }
 </style>

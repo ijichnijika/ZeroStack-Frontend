@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive } from 'vue'
 import { message } from 'ant-design-vue'
-import { PlusOutlined, SearchOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { SearchOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, UserOutlined, PlusOutlined } from '@ant-design/icons-vue'
 import { listUserVoByPage, addUser, updateUser, deleteUser } from '@/api/userController'
+import { useAdminTable } from '@/composables/useAdminTable'
+import { formatDate } from '@/utils/formatDate'
+import AdminPageHeader from '@/components/admin/AdminPageHeader.vue'
+import AdminSearchPanel from '@/components/admin/AdminSearchPanel.vue'
+import AdminPagination from '@/components/admin/AdminPagination.vue'
+import { ref } from 'vue'
 
 // --- 列表查询与分页 ---
-const loading = ref(false)
-const dataList = ref<API.UserVO[]>([])
-const total = ref(0)
-
 const searchParams = reactive<API.UserQueryRequest>({
   pageNum: 1,
   pageSize: 10,
@@ -17,92 +19,33 @@ const searchParams = reactive<API.UserQueryRequest>({
   userRole: undefined,
 })
 
+const { loading, dataList, total, fetchData, handleSearch, handleReset, handlePageChange } =
+  useAdminTable<API.UserVO, API.UserQueryRequest>(
+    searchParams,
+    async (params) => {
+      const res = await listUserVoByPage({ ...params })
+      if (res.data?.code !== 0) {
+        message.error(res.data?.message || '获取用户列表失败')
+      }
+      return { records: res.data?.data?.records, total: res.data?.data?.totalRow }
+    },
+    () => {
+      searchParams.userAccount = ''
+      searchParams.userName = ''
+      searchParams.userRole = undefined
+    },
+  )
+
 const columns = [
-  {
-    title: 'ID',
-    dataIndex: 'id',
-    key: 'id',
-    width: 210,
-  },
-  {
-    title: '账号',
-    dataIndex: 'userAccount',
-    key: 'userAccount',
-  },
-  {
-    title: '用户名',
-    dataIndex: 'userName',
-    key: 'userName',
-  },
-  {
-    title: '头像',
-    dataIndex: 'userAvatar',
-    key: 'userAvatar',
-    width: 80,
-  },
-  {
-    title: '简介',
-    dataIndex: 'userProfile',
-    key: 'userProfile',
-    ellipsis: true,
-  },
-  {
-    title: '角色',
-    dataIndex: 'userRole',
-    key: 'userRole',
-    width: 120,
-  },
-  {
-    title: '创建时间',
-    dataIndex: 'createTime',
-    key: 'createTime',
-    width: 180,
-  },
-  {
-    title: '操作',
-    key: 'action',
-    width: 180,
-    fixed: 'right',
-  },
+  { title: 'ID', dataIndex: 'id', key: 'id', width: 210 },
+  { title: '账号', dataIndex: 'userAccount', key: 'userAccount' },
+  { title: '用户名', dataIndex: 'userName', key: 'userName' },
+  { title: '头像', dataIndex: 'userAvatar', key: 'userAvatar', width: 80 },
+  { title: '简介', dataIndex: 'userProfile', key: 'userProfile', ellipsis: true },
+  { title: '角色', dataIndex: 'userRole', key: 'userRole', width: 120 },
+  { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 180 },
+  { title: '操作', key: 'action', width: 180, fixed: 'right' },
 ]
-
-const fetchData = async () => {
-  loading.value = true
-  try {
-    const res = await listUserVoByPage({
-      ...searchParams,
-    })
-    if (res.data?.code === 0 && res.data?.data) {
-      dataList.value = res.data.data.records || []
-      total.value = Number(res.data.data.totalRow) || 0
-    } else {
-      message.error(res.data?.message || '获取用户列表失败')
-    }
-  } catch (error: any) {
-    message.error(error.message || '网络异常')
-  } finally {
-    loading.value = false
-  }
-}
-
-const handleSearch = () => {
-  searchParams.pageNum = 1
-  fetchData()
-}
-
-const handleReset = () => {
-  searchParams.userAccount = ''
-  searchParams.userName = ''
-  searchParams.userRole = undefined
-  searchParams.pageNum = 1
-  fetchData()
-}
-
-const handlePageChange = (page: number, pageSize: number) => {
-  searchParams.pageNum = page
-  searchParams.pageSize = pageSize
-  fetchData()
-}
 
 // --- 删除用户 ---
 const handleDelete = async (id: number) => {
@@ -196,13 +139,6 @@ const handleModalSubmit = async () => {
   }
 }
 
-// 格式化日期
-const formatDate = (dateStr?: string) => {
-  if (!dateStr) return '-'
-  const date = new Date(dateStr)
-  return date.toLocaleString()
-}
-
 onMounted(() => {
   fetchData()
 })
@@ -210,20 +146,17 @@ onMounted(() => {
 
 <template>
   <div class="user-manage-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2>用户管理看板</h2>
-        <p class="subtitle">管理系统用户、角色分配以及状态监控</p>
-      </div>
-      <a-button type="primary" size="large" @click="openAddModal" class="action-btn">
+    <!-- 页头：标题 + 新建按钮 -->
+    <AdminPageHeader title="用户管理看板" subtitle="管理系统用户、角色分配以及状态监控">
+      <a-button type="primary" size="large" class="action-btn" @click="openAddModal">
         <template #icon><PlusOutlined /></template>
         新建用户
       </a-button>
-    </div>
+    </AdminPageHeader>
 
     <!-- 搜索筛选区域 -->
-    <div class="search-panel">
-      <a-form layout="inline" :model="searchParams" class="search-form">
+    <AdminSearchPanel>
+      <a-form layout="inline" :model="searchParams">
         <a-form-item label="账号">
           <a-input v-model:value="searchParams.userAccount" placeholder="请输入账号" allow-clear />
         </a-form-item>
@@ -249,7 +182,7 @@ onMounted(() => {
           </a-space>
         </a-form-item>
       </a-form>
-    </div>
+    </AdminSearchPanel>
 
     <!-- 数据表格 -->
     <div class="table-container">
@@ -262,10 +195,10 @@ onMounted(() => {
         row-key="id"
         class="custom-table glass-table"
       >
-        <!-- 头像渲染 -->
         <template #bodyCell="{ column, record }">
+          <!-- 头像渲染 -->
           <template v-if="column.key === 'userAvatar'">
-            <div class="glow-avatar-wrapper" style="padding: 2px;">
+            <div class="glow-avatar-wrapper">
               <a-avatar :src="record.userAvatar" style="border: 2px solid #fff;">
                 <template #icon><UserOutlined /></template>
               </a-avatar>
@@ -291,7 +224,7 @@ onMounted(() => {
           <!-- 操作栏 -->
           <template v-else-if="column.key === 'action'">
             <a-space size="middle">
-              <a-button type="link" size="small" @click="openEditModal(record)" class="edit-link">
+              <a-button type="link" size="small" class="edit-link" @click="openEditModal(record)">
                 <template #icon><EditOutlined /></template>
                 编辑
               </a-button>
@@ -313,17 +246,14 @@ onMounted(() => {
       </a-table>
 
       <!-- 分页组件 -->
-      <div class="pagination-wrapper">
-        <a-pagination
-          v-model:current="searchParams.pageNum"
-          v-model:pageSize="searchParams.pageSize"
-          :total="total"
-          :show-total="(totalNum: number) => `共 ${totalNum} 条记录`"
-          show-size-changer
-          show-quick-jumper
-          @change="handlePageChange"
-        />
-      </div>
+      <AdminPagination
+        :total="total"
+        :current="searchParams.pageNum!"
+        :page-size="searchParams.pageSize!"
+        @change="handlePageChange"
+        @update:current="searchParams.pageNum = $event"
+        @update:page-size="searchParams.pageSize = $event"
+      />
     </div>
 
     <!-- 新建/编辑弹窗 -->
@@ -331,9 +261,9 @@ onMounted(() => {
       v-model:open="modalVisible"
       :title="modalTitle"
       :confirm-loading="submitLoading"
-      @ok="handleModalSubmit"
       destroy-on-close
       width="520px"
+      @ok="handleModalSubmit"
     >
       <a-form layout="vertical" style="margin-top: 16px">
         <a-form-item v-if="!isEdit" label="账号" required>
@@ -366,27 +296,6 @@ onMounted(() => {
   gap: 24px;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-  padding-bottom: 16px;
-}
-
-.header-left h2 {
-  font-size: 22px;
-  font-weight: 700;
-  color: #1f1f1f;
-  margin-bottom: 4px;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: #8c8c8c;
-  margin-bottom: 0;
-}
-
 .action-btn {
   border-radius: 99px;
   background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
@@ -399,30 +308,6 @@ onMounted(() => {
   box-shadow: 0 6px 14px rgba(24, 144, 255, 0.3);
 }
 
-.search-panel {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-}
-
-.search-form :deep(.ant-form-item) {
-  margin-bottom: 12px;
-  margin-right: 24px;
-}
-
-.search-form :deep(.ant-input),
-.search-form :deep(.ant-select-selector) {
-  background: rgba(255, 255, 255, 0.45) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
-}
-
-.search-form :deep(.ant-input:hover),
-.search-form :deep(.ant-select-selector:hover) {
-  border-color: #1890ff !important;
-}
-
 .table-container {
   background: transparent;
 }
@@ -430,6 +315,10 @@ onMounted(() => {
 .custom-table :deep(.ant-table-thead > tr > th) {
   font-weight: 600;
   color: #262626;
+}
+
+.glow-avatar-wrapper {
+  padding: 2px;
 }
 
 .role-tag {
@@ -454,37 +343,8 @@ onMounted(() => {
   color: #ff7875;
 }
 
-.pagination-wrapper {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 24px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
-  position: relative;
-  z-index: 10;
-}
-
 @media (max-width: 768px) {
-  .page-header {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-
   .action-btn {
-    width: 100%;
-  }
-
-  .search-form :deep(.ant-form-item) {
-    margin-right: 0;
-    width: 100%;
-    margin-bottom: 16px;
-  }
-  
-  .search-form :deep(.ant-form-item-control-input) {
     width: 100%;
   }
 }

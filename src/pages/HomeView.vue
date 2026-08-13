@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { message } from 'ant-design-vue'
@@ -132,7 +132,6 @@ onMounted(() => {
   loadGoodAppList()
 })
 
-import { onUnmounted } from 'vue'
 onUnmounted(() => {
   if (typeTimeout) clearTimeout(typeTimeout)
 })

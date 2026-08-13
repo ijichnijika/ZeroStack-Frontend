@@ -9,6 +9,17 @@ const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
+/**
+ * 用户下拉菜单的 key 常量
+ * 之所以提取：key 字符串同时出现在 handleDropdownClick switch 判断与模板
+ * menu-item key 属性中，若直接使用字面量，修改时需要同步两处且极易遗漏。
+ */
+const USER_MENU_KEY = {
+  PROFILE: 'profile',
+  SETTINGS: 'settings',
+  LOGOUT: 'logout',
+} as const
+
 const handleMenuClick = ({ key }: { key: string }) => {
   router.push(key)
 }
@@ -50,11 +61,11 @@ watch(
 )
 
 const handleDropdownClick = async ({ key }: { key: string }) => {
-  if (key === 'profile') {
+  if (key === USER_MENU_KEY.PROFILE) {
     router.push('/user/profile')
-  } else if (key === 'settings') {
+  } else if (key === USER_MENU_KEY.SETTINGS) {
     router.push('/user/settings')
-  } else if (key === 'logout') {
+  } else if (key === USER_MENU_KEY.LOGOUT) {
     try {
       await userStore.logout()
       message.success('退出登录成功')
@@ -99,16 +110,16 @@ const handleDropdownClick = async ({ key }: { key: string }) => {
           </div>
           <template #overlay>
             <a-menu @click="handleDropdownClick" class="glass-dropdown">
-              <a-menu-item key="profile">
+              <a-menu-item :key="USER_MENU_KEY.PROFILE">
                 <template #icon><UserOutlined /></template>
                 个人中心
               </a-menu-item>
-              <a-menu-item key="settings">
+              <a-menu-item :key="USER_MENU_KEY.SETTINGS">
                 <template #icon><SettingOutlined /></template>
                 个人设置
               </a-menu-item>
               <a-menu-divider />
-              <a-menu-item key="logout">
+              <a-menu-item :key="USER_MENU_KEY.LOGOUT">
                 <template #icon><LogoutOutlined /></template>
                 退出登录
               </a-menu-item>
