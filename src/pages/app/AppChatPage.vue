@@ -188,6 +188,15 @@ const handleLoadMore = () => {
   }
 }
 
+const autoScroll = ref(true)
+
+const handleScroll = () => {
+  if (!messagesContainer.value) return
+  const { scrollTop, scrollHeight, clientHeight } = messagesContainer.value
+  // 距离底部 50px 内视为在底部，继续保持自动跟随
+  autoScroll.value = scrollHeight - scrollTop - clientHeight <= 50
+}
+
 const scrollToBottom = () => {
   nextTick(() => {
     if (messagesContainer.value) {
@@ -286,6 +295,8 @@ const doGenerate = async (text: string) => {
   generating.value = true
   const aiMessageIndex = messages.value.length
   messages.value.push({ role: 'ai', content: '' })
+  autoScroll.value = true
+  scrollToBottom()
 
   try {
     const url = `${API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}&agent=${useAgent.value}`
@@ -294,7 +305,9 @@ const doGenerate = async (text: string) => {
     eventSource.onmessage = (event) => {
       if (event.data) {
         parseAndAppendChunk(aiMessageIndex, event.data)
-        scrollToBottom()
+        if (autoScroll.value) {
+          scrollToBottom()
+        }
       }
     }
 
@@ -388,6 +401,7 @@ const handleSend = async () => {
 
   // 消息列表展示原始文本（不含内部追加的元素信息）
   messages.value.push({ role: 'user', content: rawText })
+  autoScroll.value = true
   scrollToBottom()
 
   // 延迟触发生成，确保 Vue 完成输入框清空的渲染，
@@ -531,7 +545,7 @@ onMounted(() => {
       <!-- 左侧对话区 -->
       <div class="chat-panel">
         <!-- 消息列表（内部含滚动容器，通过 ref 控制滚动） -->
-        <div ref="messagesContainer" class="messages-wrapper">
+        <div ref="messagesContainer" class="messages-wrapper" @scroll="handleScroll">
           <ChatMessageList
             :messages="messages"
             :generating="generating"

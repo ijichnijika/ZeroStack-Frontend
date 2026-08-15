@@ -151,12 +151,11 @@ function parseMessageContent(content: string): { segments: Segment[] } {
 
 <style scoped>
 .messages-area {
-  flex: 1;
-  overflow-y: auto;
   padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  min-height: 100%;
 }
 
 .load-more-wrapper {

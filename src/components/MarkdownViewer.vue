@@ -34,15 +34,33 @@ const processContent = (text: string) => {
   let match
   while ((match = executedRegex.exec(text)) !== null) {
     const action = match[1]
-    executedCounts[action] = (executedCounts[action] || 0) + 1
+    if (action) {
+      executedCounts[action] = (executedCounts[action] || 0) + 1
+    }
+  }
+
+  // 如果包含 [执行结束]，把 exit / 退出工具调用等相关计数值抵消，防止显示未完成
+  if (/\[执行结束\]/.test(text)) {
+    executedCounts['exit'] = (executedCounts['exit'] || 0) + 1
+    executedCounts['退出工具调用'] = (executedCounts['退出工具调用'] || 0) + 1
+    executedCounts['退出'] = (executedCounts['退出'] || 0) + 1
+    executedCounts['执行结束'] = (executedCounts['执行结束'] || 0) + 1
   }
 
   let result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
-    if (executedCounts[action] > 0) {
-      executedCounts[action]--
+    if (action && (executedCounts[action] || 0) > 0) {
+      executedCounts[action] = (executedCounts[action] || 0) - 1
       return '\n\n'
     }
     return `\n\n[未完成的工具] ${action}\n\n`
+  })
+
+  // 处理 [执行结束] 转换为 UI 卡片
+  result = result.replace(/\[执行结束\]/g, () => {
+    return `\n<div class="tool-call-row finish-step">
+      <span class="tool-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11.5 14.5 15 9.5"></polyline></svg></span>
+      <span class="tool-maintext">执行结束</span>
+    </div>\n`
   })
 
   result = result.replace(/\[(?:工具调用|未完成的工具)\]\s*(.*?)(?=\n|$)/g, (match, action) => {
@@ -70,6 +88,12 @@ const processContent = (text: string) => {
       case '读取目录':
       case '目录读取':
         iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'
+        break
+      case '退出工具调用':
+      case '退出':
+      case 'exit':
+      case '执行结束':
+        iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11.5 14.5 15 9.5"></polyline></svg>'
         break
     }
     
@@ -164,6 +188,13 @@ onMounted(() => {
   border-radius: 10px;
   background-color: #f4f5f5;
   width: fit-content;
+}
+.markdown-body :deep(.tool-call-row.finish-step) {
+  background-color: #f6ffed;
+  border: 1px solid #d9f7be;
+}
+.markdown-body :deep(.tool-call-row.finish-step .tool-maintext) {
+  color: #389e0d;
 }
 .markdown-body :deep(.tool-icon) {
   display: flex;
