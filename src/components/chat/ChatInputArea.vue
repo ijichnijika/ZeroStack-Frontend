@@ -76,8 +76,9 @@ const emit = defineEmits<{
     <a-tooltip :title="!isCreator ? '无法在别人的作品下对话哦~' : ''" placement="top">
       <a-input
         :value="chatInput"
-        placeholder="请描述你想生成的网站，越详细效果越好哦"
+        placeholder="请描述你想生成的应用或页面功能，如：包含数据看板与图表的SaaS系统…"
         class="chat-input"
+        aria-label="输入需求"
         :disabled="generating || !isCreator"
         @update:value="emit('update:chatInput', $event)"
         @pressEnter="emit('send')"
@@ -94,10 +95,11 @@ const emit = defineEmits<{
                 :type="isEditMode ? 'primary' : 'default'"
                 shape="circle"
                 class="visual-edit-btn"
+                aria-label="切换可视化编辑模式"
                 :disabled="!hasPreview || !isCreator"
                 @click="emit('toggleEditMode')"
               >
-                <template #icon><HighlightOutlined /></template>
+                <template #icon><HighlightOutlined aria-hidden="true" /></template>
               </a-button>
             </a-tooltip>
             <!-- 发送按钮（未生成时显示） -->
@@ -105,10 +107,11 @@ const emit = defineEmits<{
               v-if="!generating"
               type="primary"
               shape="circle"
+              aria-label="发送生成需求"
               :disabled="!isCreator"
               @click="emit('send')"
             >
-              <template #icon><SendOutlined /></template>
+              <template #icon><SendOutlined aria-hidden="true" /></template>
             </a-button>
             <!-- 停止按钮（生成中显示） -->
             <a-button
@@ -116,10 +119,11 @@ const emit = defineEmits<{
               type="primary"
               danger
               shape="circle"
+              aria-label="停止生成"
               :disabled="!isCreator"
               @click="emit('stop')"
             >
-              <template #icon><PauseCircleOutlined /></template>
+              <template #icon><PauseCircleOutlined aria-hidden="true" /></template>
             </a-button>
           </div>
         </template>
@@ -130,26 +134,33 @@ const emit = defineEmits<{
 
 <style scoped>
 .input-area {
-  padding: 16px;
-  background: #ffffff;
-  border-top: 1px solid #f0f0f0;
+  padding: 16px 20px;
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 0.85);
 }
 
 .chat-input {
-  border-radius: 20px;
-  padding: 8px 16px;
-  border: 1px solid #e0e0e0;
+  border-radius: 9999px;
+  padding: 6px 14px;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 16px rgba(31, 38, 135, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  transition: background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
 .chat-input:focus-within {
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+  background: #ffffff;
+  border-color: rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 8px 24px rgba(99, 102, 241, 0.12);
 }
 
 .input-suffix {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-right: 12px;
+  gap: 8px;
+  margin-right: 4px;
 }
 
 /* 可视化编辑按钮 */
@@ -173,34 +184,38 @@ const emit = defineEmits<{
 .alert-id,
 .alert-class {
   display: inline-block;
-  padding: 0 5px;
-  border-radius: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 12px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .alert-tag {
-  background: #e6f7ff;
-  color: #0958d9;
+  background: #f1f5f9;
+  color: #4338ca;
+  border: 1px solid #e0e7ff;
 }
 
 .alert-id {
-  background: #fff7e6;
-  color: #d46b08;
+  background: #f8fafc;
+  color: #0284c7;
+  border: 1px solid #e0f2fe;
 }
 
 .alert-class {
-  background: #f6ffed;
-  color: #389e0d;
+  background: #f8fafc;
+  color: #0f766e;
+  border: 1px solid #ccfbf1;
 }
 
 .alert-sep {
-  color: #bbb;
+  color: #94a3b8;
 }
 
 .alert-text {
-  color: #595959;
-  font-style: italic;
+  color: #64748b;
+  font-style: normal;
   font-size: 12px;
 }
 </style>

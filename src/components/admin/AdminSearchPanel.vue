@@ -15,11 +15,11 @@
 
 <style scoped>
 .search-panel {
-  background: rgba(255, 255, 255, 0.3) !important;
-  border: 1px solid rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 10px;
   padding: 20px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
 }
 
 /* 让插槽内的 a-form 表单项间距统一 */
@@ -30,13 +30,21 @@
 
 :deep(.ant-input),
 :deep(.ant-select-selector) {
-  background: rgba(255, 255, 255, 0.45) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  border-radius: 6px !important;
 }
 
 :deep(.ant-input:hover),
 :deep(.ant-select-selector:hover) {
-  border-color: #1890ff !important;
+  border-color: #94a3b8 !important;
+}
+
+:deep(.ant-input:focus),
+:deep(.ant-input-focused),
+:deep(.ant-select-focused .ant-select-selector) {
+  border-color: #4f46e5 !important;
+  box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15) !important;
 }
 
 @media (max-width: 768px) {

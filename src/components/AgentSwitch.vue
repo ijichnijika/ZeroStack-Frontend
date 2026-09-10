@@ -1,22 +1,31 @@
 <template>
-  <div class="agent-switch-wrapper" @click="toggle" :class="{ 'is-agent': checked, 'is-disabled': disabled }">
-    <!-- 液态玻璃底座 -->
-    <div class="glass-backdrop"></div>
-    
+  <button
+    type="button"
+    role="switch"
+    :aria-checked="checked"
+    :aria-disabled="disabled"
+    :disabled="disabled"
+    aria-label="Agent 模式切换开关"
+    class="agent-switch-wrapper"
+    :class="{ 'is-agent': checked, 'is-disabled': disabled }"
+    @click="toggle"
+    @keydown.enter.prevent="toggle"
+    @keydown.space.prevent="toggle"
+  >
     <!-- 滑块 -->
-    <div class="slider"></div>
+    <div class="slider" aria-hidden="true"></div>
     
-    <!-- 文本选项 -->
-    <div class="option normal" :class="{ 'active': !checked }">
+    <!-- 选项文本 -->
+    <span class="option normal" :class="{ 'active': !checked }">
       普通模式
-    </div>
-    <div class="option agent" :class="{ 'active': checked }">
-      <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    </span>
+    <span class="option agent" :class="{ 'active': checked }">
+      <svg class="sparkle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <path d="M12 2L13.2 8.8L20 10L13.2 11.2L12 18L10.8 11.2L4 10L10.8 8.8L12 2Z" fill="currentColor"/>
       </svg>
       Agent
-    </div>
-  </div>
+    </span>
+  </button>
 </template>
 
 <script setup lang="ts">
@@ -44,71 +53,54 @@ const toggle = () => {
   position: relative;
   display: inline-flex;
   align-items: center;
-  width: 170px;
-  height: 36px;
+  width: 160px;
+  height: 34px;
   padding: 3px;
   cursor: pointer;
   user-select: none;
-  border-radius: 20px;
-  transition: transform 0.2s ease;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: background-color 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  font-family: inherit;
+  outline: none;
 }
 
-.agent-switch-wrapper:active:not(.is-disabled) {
-  transform: scale(0.97);
+.agent-switch-wrapper:hover:not(:disabled) {
+  border-color: rgba(99, 102, 241, 0.35);
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.agent-switch-wrapper:focus-visible {
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1;
 }
 
 .agent-switch-wrapper.is-disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: not-allowed;
 }
 
-/* 底部液态玻璃材质 */
-.glass-backdrop {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 20px;
-  background: rgba(235, 238, 245, 0.45);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 
-    inset 0 1px 3px rgba(255, 255, 255, 0.6),
-    inset 0 -1px 4px rgba(0, 0, 0, 0.02),
-    0 4px 10px rgba(0, 0, 0, 0.03);
-  z-index: 0;
-}
-
-.agent-switch-wrapper:hover .glass-backdrop {
-  background: rgba(230, 235, 245, 0.55);
-}
-
-/* 悬浮滑块 */
+/* 滑块 */
 .slider {
   position: absolute;
   top: 3px;
   left: 3px;
   width: calc(50% - 3px);
   height: calc(100% - 6px);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 
-    0 3px 8px rgba(0, 0, 0, 0.08),
-    0 1px 2px rgba(0, 0, 0, 0.04),
-    inset 0 1px 1px rgba(255, 255, 255, 1);
-  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.4s ease, box-shadow 0.4s ease;
+  border-radius: 9999px;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s ease, box-shadow 0.2s ease;
   z-index: 1;
 }
 
-/* 开启 Agent 时的流光滑块 */
+/* 开启 Agent 时的滑块 */
 .is-agent .slider {
   transform: translateX(100%);
-  background: linear-gradient(135deg, rgba(43, 116, 255, 0.9) 0%, rgba(133, 45, 226, 0.9) 100%);
-  box-shadow: 
-    0 4px 12px rgba(69, 93, 255, 0.3),
-    inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.45);
 }
 
 /* 选项文本容器 */
@@ -121,52 +113,49 @@ const toggle = () => {
   gap: 4px;
   width: 50%;
   height: 100%;
-  font-size: 13px;
-  font-weight: 600;
-  color: #8c92a4;
+  font-size: 12px;
+  font-weight: 500;
+  color: #64748b;
   letter-spacing: 0.2px;
-  transition: color 0.3s ease, text-shadow 0.3s ease;
+  transition: color 0.2s ease;
 }
 
-/* 普通模式高亮 */
+/* 普通模式选中状态 */
 .option.normal.active {
-  color: #1a1a1a;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.8);
+  color: #0f172a;
+  font-weight: 600;
 }
 
-/* Agent模式开启时，普通文字变灰 */
+/* Agent 模式开启时普通选项文字样式 */
 .is-agent .option.normal {
-  color: #8c92a4;
-  text-shadow: none;
+  color: #64748b;
 }
 
-/* Agent模式高亮 */
+/* Agent 模式激活状态 */
 .is-agent .option.agent.active {
   color: #ffffff;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  font-weight: 600;
 }
 
-/* 星星图标 */
+/* 图标样式 */
 .sparkle-icon {
-  width: 14px;
-  height: 14px;
-  opacity: 0.4;
-  transition: opacity 0.3s ease;
+  width: 13px;
+  height: 13px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
 }
 
 .is-agent .sparkle-icon {
   opacity: 1;
-  animation: pulse-sparkle 2s infinite ease-in-out;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.8));
 }
 
-@keyframes pulse-sparkle {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 0.9;
-  }
-  50% {
-    transform: scale(1.2);
-    opacity: 1;
+@media (prefers-reduced-motion: reduce) {
+  .agent-switch-wrapper,
+  .slider,
+  .option,
+  .sparkle-icon {
+    transition: none !important;
   }
 }
 </style>

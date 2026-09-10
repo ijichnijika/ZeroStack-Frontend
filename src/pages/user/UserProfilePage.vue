@@ -73,20 +73,20 @@ const formatDate = (dateStr?: string) => {
 }
 
 .profile-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   padding-bottom: 16px;
 }
 
 .profile-header h2 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  color: #1f1f1f;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #8c8c8c;
+  color: #64748b;
   margin-bottom: 0;
 }
 
@@ -102,22 +102,22 @@ const formatDate = (dateStr?: string) => {
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  border-right: 1px solid rgba(255, 255, 255, 0.2);
+  border-right: 1px solid rgba(15, 23, 42, 0.08);
   padding-right: 40px;
 }
 
 .user-name {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
+  font-size: 18px;
+  font-weight: 600;
+  color: #0f172a;
   margin-bottom: 0;
 }
 
 .role-tag {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
-  padding: 4px 12px;
-  border-radius: 99px;
+  padding: 2px 10px;
+  border-radius: 6px;
 }
 
 .profile-right {
@@ -131,44 +131,43 @@ const formatDate = (dateStr?: string) => {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
-  color: #4b5563;
+  font-weight: 500;
+  color: #475569;
 }
 
 .desc-val {
   font-size: 14px;
-  color: #1f2937;
+  color: #0f172a;
 }
 
 .profile-text {
-  font-style: italic;
-  color: #4b5563;
+  color: #64748b;
 }
 
 .glass-descriptions :deep(.ant-descriptions-header) {
   margin-bottom: 16px;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #111827;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+  color: #0f172a;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .glass-descriptions :deep(.ant-descriptions-view) {
-  border: 1px solid rgba(255, 255, 255, 0.3) !important;
-  border-radius: 12px;
+  border: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.2) !important;
+  background: #ffffff !important;
 }
 
 .glass-descriptions :deep(.ant-descriptions-row > th) {
-  background: rgba(255, 255, 255, 0.4) !important;
-  border-right: 1px solid rgba(255, 255, 255, 0.3) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: #f8fafc !important;
+  border-right: 1px solid #e2e8f0 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
 }
 
 .glass-descriptions :deep(.ant-descriptions-row > td) {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+  background: #ffffff !important;
+  border-bottom: 1px solid #f1f5f9 !important;
 }
 
 .action-group {
@@ -176,19 +175,20 @@ const formatDate = (dateStr?: string) => {
 }
 
 .edit-btn {
-  border-radius: 99px;
-  background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
-  border: none;
-  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.2);
-  height: 44px;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+  height: 40px;
   padding: 0 24px;
-  font-size: 15px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .edit-btn:hover {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55) !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(24, 144, 255, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -202,7 +202,7 @@ const formatDate = (dateStr?: string) => {
     width: 100%;
     border-right: none;
     padding-right: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
     padding-bottom: 24px;
   }
 }

@@ -42,12 +42,12 @@ defineEmits<{
 .pagination-wrapper {
   display: flex;
   justify-content: flex-end;
-  margin-top: 24px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.4);
-  border-radius: 12px;
-  backdrop-filter: blur(8px);
+  margin-top: 20px;
+  padding: 10px 16px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   position: relative;
   z-index: 10;
 }

@@ -108,33 +108,33 @@ const handleSubmit = async () => {
 }
 
 .settings-header {
-  border-bottom: 1px solid rgba(255, 255, 255, 0.25);
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08);
   padding-bottom: 16px;
 }
 
 .back-link {
   padding: 0;
   margin-bottom: 8px;
-  color: #555;
+  color: #64748b;
   font-size: 14px;
   display: flex;
   align-items: center;
 }
 
 .back-link:hover {
-  color: #1890ff;
+  color: #4f46e5;
 }
 
 .settings-header h2 {
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 700;
-  color: #1f1f1f;
+  color: #0f172a;
   margin-bottom: 4px;
 }
 
 .subtitle {
   font-size: 14px;
-  color: #8c8c8c;
+  color: #64748b;
   margin-bottom: 0;
 }
 
@@ -156,37 +156,39 @@ const handleSubmit = async () => {
   align-items: center;
   gap: 16px;
   padding-left: 60px;
-  border-left: 1px solid rgba(255, 255, 255, 0.2);
+  border-left: 1px solid rgba(15, 23, 42, 0.08);
 }
 
 .preview-container h3 {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #1f2937;
+  color: #0f172a;
   margin-bottom: 8px;
 }
 
 .preview-tip {
   font-size: 12px;
-  color: #8c8c8c;
+  color: #64748b;
   text-align: center;
   line-height: 1.5;
 }
 
 .save-btn {
-  border-radius: 99px;
-  background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
-  border: none;
-  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.2);
-  height: 44px;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+  height: 40px;
   padding: 0 24px;
-  font-weight: 600;
+  font-size: 14px;
+  font-weight: 500;
   margin-top: 12px;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .save-btn:hover {
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55) !important;
   transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(24, 144, 255, 0.3);
 }
 
 @media (max-width: 768px) {
@@ -200,7 +202,7 @@ const handleSubmit = async () => {
     width: 100%;
     border-left: none;
     padding-left: 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    border-bottom: 1px solid rgba(15, 23, 42, 0.08);
     padding-bottom: 32px;
   }
 }

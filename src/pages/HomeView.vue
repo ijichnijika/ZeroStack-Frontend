@@ -93,7 +93,7 @@ const loadGoodAppList = async () => {
   }
 }
 
-const placeholderText = ref('使用ZeroStack帮我生成网站')
+const placeholderText = ref('使用ZeroStack帮我生成网站…')
 const examples = ['个人博客', '企业官网', '电商后台', '数据看板', '在线文档']
 let currentExampleIndex = 0
 let isDeleting = false
@@ -101,14 +101,20 @@ let currentText = ''
 let typeTimeout: any = null
 
 const typeWriter = () => {
-  const targetText = examples[currentExampleIndex]
+  // 减弱动态效果适配
+  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    placeholderText.value = '使用ZeroStack帮我生成现代化全栈网站…'
+    return
+  }
+
+  const targetText = examples[currentExampleIndex] || ''
   if (isDeleting) {
     currentText = targetText.substring(0, currentText.length - 1)
   } else {
     currentText = targetText.substring(0, currentText.length + 1)
   }
   
-  placeholderText.value = `使用ZeroStack帮我生成${currentText}网站`
+  placeholderText.value = `使用ZeroStack帮我生成${currentText}网站…`
   
   let typingSpeed = isDeleting ? 50 : 150
   
@@ -126,9 +132,7 @@ const typeWriter = () => {
 
 onMounted(() => {
   typeWriter()
-  if (userStore.loginUser?.id) {
-    loadMyAppList()
-  }
+  loadMyAppList()
   loadGoodAppList()
 })
 
@@ -154,10 +158,14 @@ const goChat = (appId: number) => {
 <template>
   <div class="home-container">
     <div class="hero-section">
+      <div class="hero-eyebrow">
+        <span class="hero-eyebrow-dot" aria-hidden="true"></span>
+        <span>AI-Native Workspace</span>
+      </div>
       <h1 class="hero-title">
-        一句话 <img src="@/assets/logo.png" alt="logo" class="inline-logo" /> 呈所想
+        一句话生成，即刻呈现所想
       </h1>
-      <p class="hero-desc">与 AI 对话轻松创建应用和网站</p>
+      <p class="hero-desc">输入自然语言需求，秒级构建交互式前端与独立全栈应用沙盒</p>
 
       <div class="input-wrapper">
         <a-textarea
@@ -165,22 +173,47 @@ const goChat = (appId: number) => {
           :placeholder="placeholderText"
           :auto-size="{ minRows: 4, maxRows: 6 }"
           class="prompt-input"
+          aria-label="输入应用生成提示词"
           @pressEnter.prevent="handleAdd"
         />
-          <div class="input-actions">
-            <div class="input-tags">
-              <a-tag @click="prompt = '帮我生成一个极简风格的个人博客网站，包含首页、文章列表页和文章详情页。首页需要展示最新的5篇文章和个人简介，整体色调以黑白灰为主，支持移动端自适应，排版要清晰舒适，符合现代审美。'">极简个人博客</a-tag>
-              <a-tag @click="prompt = '创建一个SaaS产品的企业官网，需要有吸引人的首屏，包含产品特性介绍、客户评价轮播图、详细的定价方案（分基础版、专业版、企业版），以及底部的联系我们表单。整体风格专业、现代、有科技感。'">SaaS企业官网</a-tag>
-              <a-tag @click="prompt = '开发一个电商后台管理系统的首页数据看板。需要包含今日营业额、新增用户数、订单总数等核心指标统计卡片，以及订单趋势折线图、商品分类占比饼图。界面设计需要专业现代，使用经典的侧边栏加顶部导航布局。'">电商数据看板</a-tag>
-              <a-tag @click="prompt = '设计一个暗黑模式的程序员社区交流页面。包含顶部导航栏（支持全局搜索和快捷发布）、左侧边栏（热门话题分类）、主体区域为动态列表（展示帖子标题、摘要、作者头像、点赞数和评论数），风格极客。'">暗黑极客社区</a-tag>
-            </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <AgentSwitch v-model:checked="useAgent" />
-              <a-button type="primary" shape="circle" size="large" class="submit-btn" :loading="submitting" @click="handleAdd">
-                <template #icon><ArrowUpOutlined /></template>
-              </a-button>
-            </div>
+        <div class="input-actions">
+          <div class="input-tags" role="toolbar" aria-label="快捷生成模板">
+            <button
+              type="button"
+              class="tag-chip-btn"
+              @click="prompt = '帮我生成一个极简风格的个人博客网站，包含首页、文章列表页和文章详情页。首页需要展示最新的5篇文章和个人简介，整体色调以黑白灰为主，支持移动端自适应，排版要清晰舒适，符合现代审美。'"
+            >
+              极简个人博客
+            </button>
+            <button
+              type="button"
+              class="tag-chip-btn"
+              @click="prompt = '创建一个SaaS产品的企业官网，需要有吸引人的首屏，包含产品特性介绍、客户评价轮播图、详细的定价方案（分基础版、专业版、企业版），以及底部的联系我们表单。整体风格专业、现代、有科技感。'"
+            >
+              SaaS企业官网
+            </button>
+            <button
+              type="button"
+              class="tag-chip-btn"
+              @click="prompt = '开发一个电商后台管理系统的首页数据看板。需要包含今日营业额、新增用户数、订单总数等核心指标统计卡片，以及订单趋势折线图、商品分类占比饼图。界面设计需要专业现代，使用经典的侧边栏加顶部导航布局。'"
+            >
+              电商数据看板
+            </button>
+            <button
+              type="button"
+              class="tag-chip-btn"
+              @click="prompt = '设计一个暗黑模式的程序员社区交流页面。包含顶部导航栏（支持全局搜索和快捷发布）、左侧边栏（热门话题分类）、主体区域为动态列表（展示帖子标题、摘要、作者头像、点赞数和评论数），风格极客。'"
+            >
+              暗黑极客社区
+            </button>
           </div>
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <AgentSwitch v-model:checked="useAgent" />
+            <a-button type="primary" shape="circle" size="large" class="submit-btn" aria-label="提交生成" :loading="submitting" @click="handleAdd">
+              <template #icon><ArrowUpOutlined aria-hidden="true" /></template>
+            </a-button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -235,61 +268,87 @@ const goChat = (appId: number) => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 60px 0;
+  padding: 40px 0 60px;
   width: 100%;
 }
 
 .hero-section {
   text-align: center;
   width: 100%;
-  max-width: 900px;
-  margin-top: 20px;
-  margin-bottom: 60px;
+  max-width: 860px;
+  margin-top: 10px;
+  margin-bottom: 52px;
+}
+
+.hero-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  background: rgba(238, 242, 255, 0.75);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(199, 210, 254, 0.8);
+  color: #4f46e5;
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.12);
+}
+
+.hero-eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #6366f1;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
 }
 
 .hero-title {
-  font-size: 48px;
-  font-weight: 700;
-  color: #1a1a1a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.inline-logo {
-  height: 48px;
-  border-radius: 12px;
+  font-size: 42px;
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  margin-bottom: 14px;
+  line-height: 1.2;
+  text-wrap: balance;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #4f46e5 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-desc {
-  font-size: 18px;
-  color: #5f6368;
-  margin-bottom: 40px;
+  font-size: 16px;
+  color: #64748b;
+  margin-bottom: 36px;
 }
 
 .input-wrapper {
-  background: #ffffff;
-  border-radius: 24px;
-  padding: 16px;
-  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.78) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border-radius: 20px;
+  padding: 20px 22px;
+  box-shadow: 0 16px 40px -8px rgba(31, 38, 135, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.95);
   position: relative;
-  border: 1px solid #e0e0e0;
-  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.9);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
 }
 
-.input-wrapper:hover, .input-wrapper:focus-within {
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
-  border-color: #d0d0d0;
+.input-wrapper:hover,
+.input-wrapper:focus-within {
+  background: rgba(255, 255, 255, 0.92) !important;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 20px 48px -4px rgba(99, 102, 241, 0.18), inset 0 1px 1px rgba(255, 255, 255, 1);
+  border-color: rgba(99, 102, 241, 0.4);
+  transform: translateY(-1px);
 }
 
 .prompt-input {
   border: none !important;
   box-shadow: none !important;
-  font-size: 16px;
+  font-size: 15px;
   resize: none;
   background: transparent;
+  color: #0f172a;
 }
 
 .prompt-input:focus {
@@ -300,12 +359,10 @@ const goChat = (appId: number) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(226, 232, 240, 0.6);
 }
-
-
 
 .input-tags {
   display: flex;
@@ -313,28 +370,51 @@ const goChat = (appId: number) => {
   flex-wrap: wrap;
 }
 
-.input-tags .ant-tag {
-  border-radius: 16px;
-  padding: 4px 12px;
+.input-tags .tag-chip-btn {
+  border-radius: 9999px;
+  padding: 4px 14px;
   cursor: pointer;
-  background: #f5f5f5;
-  border: none;
-  color: #666;
-  transition: all 0.2s;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  color: #475569;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+  outline: none;
 }
 
-.input-tags .ant-tag:hover {
-  background: #e6f7ff;
-  color: #1890ff;
+.input-tags .tag-chip-btn:hover {
+  background: rgba(238, 242, 255, 0.9);
+  border-color: #a5b4fc;
+  color: #4f46e5;
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+  transform: translateY(-0.5px);
+}
+
+.input-tags .tag-chip-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1;
 }
 
 .submit-btn {
-  background: #1a1a1a;
-  border: none;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border: none !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
 }
 
 .submit-btn:hover {
-  background: #333333;
+  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6) !important;
+  transform: translateY(-1px);
+  filter: brightness(1.04);
+}
+
+.submit-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1 !important;
 }
 
 .content-section {
@@ -342,14 +422,15 @@ const goChat = (appId: number) => {
   max-width: 1200px;
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 36px;
 }
 
 .section-title {
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 24px;
+  color: #0f172a;
+  margin-bottom: 20px;
+  letter-spacing: -0.3px;
 }
 
 .list-container {

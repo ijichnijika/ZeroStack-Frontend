@@ -16,32 +16,32 @@
   padding: 32px 16px;
   text-align: center;
   background: transparent;
-  color: #5f6368;
+  color: #64748b;
   font-size: 14px;
 }
 
 .footer-links {
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .footer-links a {
-  color: #5f6368;
-  transition: color 0.3s;
+  color: #64748b;
+  transition: color 0.2s ease;
   text-decoration: none;
 }
 
 .footer-links a:hover {
-  color: #1a73e8;
+  color: #4f46e5;
 }
 
 .divider {
   margin: 0 16px;
-  color: #e0e0e0;
+  color: #e2e8f0;
 }
 
 .copyright {
-  font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  font-family: inherit;
   font-size: 13px;
-  color: #8c8c8c;
+  color: #94a3b8;
 }
 </style>

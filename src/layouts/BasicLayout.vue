@@ -5,6 +5,7 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 
 <template>
   <div id="basic-layout">
+    <a href="#main-content" class="sr-only">跳至主要内容</a>
     <a-layout class="layout-container">
       <a-layout-header
         class="layout-header"
@@ -13,9 +14,9 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
         <GlobalHeader />
       </a-layout-header>
       <a-layout-content class="layout-content">
-        <div class="content-wrapper glass-effect">
+        <main id="main-content" class="content-wrapper glass-effect">
           <router-view />
-        </div>
+        </main>
       </a-layout-content>
       <a-layout-footer class="layout-footer">
         <GlobalFooter />
@@ -58,13 +59,14 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
 }
 
 .content-wrapper {
-  padding: 24px;
-  border-radius: 16px;
+  padding: 32px;
+  border-radius: 20px;
   flex: 1;
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   box-sizing: border-box;
+  scroll-margin-top: 60px;
 }
 
 .layout-footer {
@@ -79,8 +81,8 @@ import GlobalFooter from '@/components/GlobalFooter.vue'
   }
 
   .content-wrapper {
-    padding: 16px;
-    border-radius: 4px;
+    padding: 18px;
+    border-radius: 14px;
   }
 }
 </style>

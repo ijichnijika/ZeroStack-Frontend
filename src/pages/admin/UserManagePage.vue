@@ -198,17 +198,15 @@ onMounted(() => {
         <template #bodyCell="{ column, record }">
           <!-- 头像渲染 -->
           <template v-if="column.key === 'userAvatar'">
-            <div class="glow-avatar-wrapper">
-              <a-avatar :src="record.userAvatar" style="border: 2px solid #fff;">
-                <template #icon><UserOutlined /></template>
-              </a-avatar>
-            </div>
+            <a-avatar :src="record.userAvatar" :size="32" style="border: 1px solid rgba(15, 23, 42, 0.08);">
+              <template #icon><UserOutlined /></template>
+            </a-avatar>
           </template>
 
           <!-- 角色渲染 -->
           <template v-else-if="column.key === 'userRole'">
             <a-tag v-if="record.userRole === 'admin'" color="blue" class="role-tag">管理员</a-tag>
-            <a-tag v-else color="gray" class="role-tag">普通用户</a-tag>
+            <a-tag v-else class="role-tag">普通用户</a-tag>
           </template>
 
           <!-- 简介渲染 -->

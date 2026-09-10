@@ -47,13 +47,21 @@ const emit = defineEmits<{
   <div class="top-bar">
     <!-- 左侧：返回 + 标题 -->
     <div class="left-section">
-      <a-button type="text" class="back-btn" @click="emit('back')">
-        <template #icon><ArrowLeftOutlined /></template>
+      <a-button type="text" class="back-btn" aria-label="返回控制台" @click="emit('back')">
+        <template #icon><ArrowLeftOutlined aria-hidden="true" /></template>
       </a-button>
 
       <!-- 标题展示态：点击进入编辑 -->
-      <div v-if="!isEditingTitle" class="title-display" @click="emit('startEditTitle')">
-        <span class="app-name">{{ appInfo?.appName || '加载中...' }}</span>
+      <div
+        v-if="!isEditingTitle"
+        class="title-display"
+        role="button"
+        tabindex="0"
+        aria-label="编辑应用标题"
+        @click="emit('startEditTitle')"
+        @keydown.enter="emit('startEditTitle')"
+      >
+        <span class="app-name">{{ appInfo?.appName || '加载中…' }}</span>
         <a-tag
           v-if="appInfo?.codeGenType"
           :color="CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.color || 'blue'"
@@ -61,7 +69,7 @@ const emit = defineEmits<{
         >
           {{ CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.label || appInfo.codeGenType }}
         </a-tag>
-        <EditOutlined class="edit-icon" />
+        <EditOutlined class="edit-icon" aria-hidden="true" />
       </div>
 
       <!-- 标题编辑态：输入框 + AI 生成 + 确认 -->
@@ -70,6 +78,7 @@ const emit = defineEmits<{
           :value="editTitleValue"
           class="title-input"
           autofocus
+          aria-label="应用标题"
           @input="emit('update:editTitleValue', ($event.target as HTMLInputElement).value)"
           @keyup.enter="emit('saveTitle')"
           @blur="emit('saveTitle')"
@@ -80,14 +89,15 @@ const emit = defineEmits<{
             shape="circle"
             size="small"
             class="ai-gen-btn"
+            aria-label="使用AI生成标题"
             :loading="generatingTitle"
             @mousedown.prevent="emit('aiGenTitle')"
           >
-            <template #icon><RobotOutlined /></template>
+            <template #icon><RobotOutlined aria-hidden="true" /></template>
           </a-button>
         </a-tooltip>
-        <a-button type="text" shape="circle" size="small" class="save-title-btn" @mousedown.prevent="emit('saveTitle')">
-          <template #icon><CheckOutlined /></template>
+        <a-button type="text" shape="circle" size="small" class="save-title-btn" aria-label="保存标题" @mousedown.prevent="emit('saveTitle')">
+          <template #icon><CheckOutlined aria-hidden="true" /></template>
         </a-button>
       </div>
     </div>
@@ -96,20 +106,18 @@ const emit = defineEmits<{
     <div class="right-section">
       <AppInfoPopover
         :appInfo="appInfo ?? undefined"
-
         :canManage="canManage"
-
         @edit="emit('edit')"
         @delete="emit('delete')"
       />
 
       <a-button class="download-btn" :loading="downloading" :disabled="!hasPreview" @click="emit('download')">
-        <template #icon><DownloadOutlined /></template>
+        <template #icon><DownloadOutlined aria-hidden="true" /></template>
         下载代码
       </a-button>
 
       <a-button type="primary" class="deploy-btn" :loading="deploying" @click="emit('deploy')">
-        <template #icon><CloudUploadOutlined /></template>
+        <template #icon><CloudUploadOutlined aria-hidden="true" /></template>
         部署
       </a-button>
     </div>
@@ -119,12 +127,14 @@ const emit = defineEmits<{
 <style scoped>
 .top-bar {
   height: 56px;
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 24px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 0 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.85);
   flex-shrink: 0;
 }
 
@@ -142,12 +152,19 @@ const emit = defineEmits<{
 
 .back-btn {
   margin-right: 0;
+  border-radius: 9999px;
+  color: #475569;
+}
+
+.back-btn:hover {
+  color: #0f172a;
+  background: rgba(15, 23, 42, 0.04);
 }
 
 .app-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #0f172a;
 }
 
 .gen-type-tag {
@@ -161,16 +178,16 @@ const emit = defineEmits<{
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 6px;
-  transition: background-color 0.2s;
+  transition: background-color 0.15s ease;
 }
 
 .title-display:hover {
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: rgba(15, 23, 42, 0.04);
 }
 
 .edit-icon {
-  font-size: 14px;
-  color: #999;
+  font-size: 13px;
+  color: #94a3b8;
   margin-left: 8px;
   opacity: 0;
   transition: opacity 0.2s;
@@ -188,11 +205,11 @@ const emit = defineEmits<{
 }
 
 .title-input {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
-  color: #1a1a1a;
+  color: #0f172a;
   border: none;
-  border-bottom: 2px solid #1890ff;
+  border-bottom: 2px solid #4f46e5;
   background: transparent;
   outline: none;
   padding: 2px 4px;
@@ -200,15 +217,39 @@ const emit = defineEmits<{
 }
 
 .ai-gen-btn {
-  background: linear-gradient(135deg, #1890ff, #52c41a);
-  border: none;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border: none !important;
+  color: #ffffff !important;
+  border-radius: 6px !important;
+  box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3);
+}
+
+.ai-gen-btn:hover {
+  filter: brightness(1.06);
 }
 
 .save-title-btn {
-  color: #52c41a;
+  color: #16a34a;
+}
+
+.download-btn {
+  border-radius: 9999px !important;
+  background: rgba(255, 255, 255, 0.8) !important;
+  border: 1px solid rgba(226, 232, 240, 0.9) !important;
+  font-weight: 500;
 }
 
 .deploy-btn {
-  border-radius: 8px;
+  border-radius: 9999px !important;
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
+  border: none !important;
+  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.35) !important;
+  font-weight: 500;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.deploy-btn:hover {
+  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.5) !important;
+  transform: translateY(-0.5px);
 }
 </style>
