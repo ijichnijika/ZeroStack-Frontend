@@ -2,12 +2,13 @@
 import { ref, onMounted, nextTick, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { LoadingOutlined, HighlightOutlined } from '@ant-design/icons-vue'
+import { LoadingOutlined, HighlightOutlined, CodeOutlined, EyeOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
-import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle, downloadAppCode, stopAppGenCode } from '@/api/appController'
+import { getAppVoById, deleteApp, deployApp, updateApp, genAppTitle, downloadAppCode, stopAppGenCode, getAppCodeFiles } from '@/api/appController'
 import { listAppChatHistory } from '@/api/chatHistoryController'
 import { getStaticPreviewUrl, API_BASE_URL, getDeployUrl } from '@/config/env'
 import { useVisualEditor } from '@/utils/useVisualEditor'
+import { CodeGenTypeEnum } from '@/enums/codeGenType'
 
 // 子组件
 import ChatTopBar from '@/components/chat/ChatTopBar.vue'
@@ -15,6 +16,7 @@ import ChatMessageList from '@/components/chat/ChatMessageList.vue'
 import type { ChatMessage } from '@/components/chat/ChatMessageList.vue'
 import ChatInputArea from '@/components/chat/ChatInputArea.vue'
 import DeploySuccessModal from '@/components/chat/DeploySuccessModal.vue'
+import CodeViewer from '@/components/chat/CodeViewer.vue'
 
 // ------------------------------------------------------------------ //
 //  路由 & Store
@@ -23,7 +25,8 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const appId = route.params.id as string
+// 雪花算法生成的 64 位 Long 超过 Number.MAX_SAFE_INTEGER，必须保留原始字符串传输以防精度丢失
+const appId = route.params.id as any
 
 // Agent 模式开关，从路由查询参数初始化，默认不开启
 const useAgent = ref(route.query.agent === 'true')
@@ -42,6 +45,14 @@ const deployKeyForModal = ref('')
 const chatInput = ref('')
 const messagesContainer = ref<HTMLElement | null>(null)
 const previewIframeRef = ref<HTMLIFrameElement | null>(null)
+
+// ------------------------------------------------------------------ //
+//  右侧面板：Tab 切换 & 代码视图
+// ------------------------------------------------------------------ //
+const activePreviewTab = ref<'preview' | 'code'>('preview')
+const codeFiles = ref<Map<string, string>>(new Map())
+const activeCodeFile = ref('')
+const isVueProject = computed(() => appInfo.value?.codeGenType === CodeGenTypeEnum.VUE_PROJECT)
 
 // ------------------------------------------------------------------ //
 //  消息列表
@@ -183,7 +194,7 @@ const loadHistory = async (lastCreateTime?: string) => {
 }
 
 const handleLoadMore = () => {
-  if (messages.value.length > 0) {
+  if (messages.value.length > 0 && messages.value[0]) {
     loadHistory(messages.value[0].createTime)
   }
 }
@@ -261,32 +272,47 @@ const listenToBuildStatus = (appIdArg: string | number, previewUrl: string) => {
  * 普通模式下是纯文本流，需要分别解析再追加到消息内容。
  */
 const parseAndAppendChunk = (aiMessageIndex: number, dataStr: string) => {
+  const targetMsg = messages.value[aiMessageIndex]
+  if (!targetMsg) return
+
   try {
     const parsed = JSON.parse(dataStr)
     if (parsed.d !== undefined) {
       try {
         const dParsed = JSON.parse(parsed.d)
-        if (dParsed.type === 'workflow_progress') {
+        if (dParsed.type === 'code_update') {
+          targetMsg.content += (dParsed.summary || '')
+          const filePath = dParsed.filePath as string
+          if (dParsed.toolName === 'writeFile') {
+            codeFiles.value.set(filePath, dParsed.content || '')
+          } else if (dParsed.toolName === 'modifyFile') {
+            const existing = codeFiles.value.get(filePath) || ''
+            const updated = existing.replace(dParsed.oldContent || '', dParsed.newContent || '')
+            codeFiles.value.set(filePath, updated)
+          }
+          activeCodeFile.value = filePath
+          if (isVueProject.value) {
+            activePreviewTab.value = 'code'
+          }
+        } else if (dParsed.type === 'workflow_progress') {
           const icon = dParsed.stepNumber === -1 ? '❌' : (dParsed.stepName === '完成' ? '🎉' : (dParsed.stepNumber === 0 ? '🚀' : '✅'))
-          messages.value[aiMessageIndex].content += `\n> ${icon} **[${dParsed.stepName}]** ${dParsed.message}\n\n`
+          targetMsg.content += `\n> ${icon} **[${dParsed.stepName}]** ${dParsed.message}\n\n`
         } else if (dParsed.type === 'ai_response' || dParsed.type === 'ai_thinking') {
-          messages.value[aiMessageIndex].content += (dParsed.data || '')
+          targetMsg.content += (dParsed.data || '')
         } else {
-          messages.value[aiMessageIndex].content += parsed.d
+          targetMsg.content += parsed.d
         }
       } catch {
-        // d 字段不是 JSON，说明是普通文本流，直接追加
-        messages.value[aiMessageIndex].content += parsed.d
+        targetMsg.content += parsed.d
       }
     } else {
-      messages.value[aiMessageIndex].content += dataStr
+      targetMsg.content += dataStr
     }
   } catch {
-    // 外层也不是 JSON，fallback 直接追加
     if (dataStr.startsWith('"') && dataStr.endsWith('"')) {
-      messages.value[aiMessageIndex].content += JSON.parse(dataStr)
+      targetMsg.content += JSON.parse(dataStr)
     } else {
-      messages.value[aiMessageIndex].content += dataStr
+      targetMsg.content += dataStr
     }
   }
 }
@@ -328,6 +354,7 @@ const doGenerate = async (text: string) => {
             if (codeGenType === 'vue_project') {
               buildStatusText.value = '准备构建...'
               listenToBuildStatus(appInfo.value.id!, previewUrl)
+              await loadCodeFiles()
             } else {
               iframeUrl.value = `${previewUrl}?t=${Date.now()}`
             }
@@ -346,10 +373,14 @@ const doGenerate = async (text: string) => {
       try {
         const errorData = JSON.parse(event.data)
         message.error(errorData.message || '生成被拒绝')
-        messages.value[aiMessageIndex].content += `\n[${errorData.message || '操作受限'}]`
+        if (messages.value[aiMessageIndex]) {
+          messages.value[aiMessageIndex].content += `\n[${errorData.message || '操作受限'}]`
+        }
       } catch {
         message.error('生成受限')
-        messages.value[aiMessageIndex].content += '\n[操作受限]'
+        if (messages.value[aiMessageIndex]) {
+          messages.value[aiMessageIndex].content += '\n[操作受限]'
+        }
       }
       generating.value = false
       eventSource.close()
@@ -358,12 +389,17 @@ const doGenerate = async (text: string) => {
 
     eventSource.onerror = () => {
       message.error('生成异常，流被中断')
-      messages.value[aiMessageIndex].content += '\n[生成中断]'
+      if (messages.value[aiMessageIndex]) {
+        messages.value[aiMessageIndex].content += '\n[生成中断]'
+      }
       finishGeneration()
     }
-  } catch (error: any) {
-    message.error('生成异常: ' + error.message)
-    messages.value[aiMessageIndex].content += '\n[生成失败]'
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : '未知异常'
+    message.error('生成异常: ' + errorMsg)
+    if (messages.value[aiMessageIndex]) {
+      messages.value[aiMessageIndex].content += '\n[生成失败]'
+    }
     generating.value = false
     scrollToBottom()
   }
@@ -420,8 +456,9 @@ const handleStopGen = async () => {
     } else {
       message.error(res.data?.message || '停止失败')
     }
-  } catch (error: any) {
-    message.error('停止异常: ' + error.message)
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : '未知异常'
+    message.error('停止异常: ' + errorMsg)
   }
 }
 
@@ -492,6 +529,25 @@ const visitWebsite = () => {
   window.open(getDeployUrl(deployKeyForModal.value), '_blank')
 }
 
+const loadCodeFiles = async () => {
+  if (!isVueProject.value || !appInfo.value?.id) return
+  try {
+    const res = await getAppCodeFiles(appInfo.value.id)
+    if (res.data?.code === 0 && res.data.data) {
+      const map = new Map<string, string>()
+      for (const [filePath, content] of Object.entries(res.data.data as Record<string, string>)) {
+        map.set(filePath, content)
+      }
+      codeFiles.value = map
+      if (!activeCodeFile.value || !map.has(activeCodeFile.value)) {
+        activeCodeFile.value = map.keys().next().value || ''
+      }
+    }
+  } catch (e) {
+    console.error('加载应用源码失败', e)
+  }
+}
+
 // ------------------------------------------------------------------ //
 //  初始化
 // ------------------------------------------------------------------ //
@@ -499,6 +555,10 @@ const initPage = async () => {
   await Promise.all([loadAppInfo(), loadHistory()])
 
   if (appInfo.value) {
+    if (isVueProject.value) {
+      await loadCodeFiles()
+    }
+
     // 进入页面时，如果 app 已有对话记录（>=2），直接展示对应预览
     if (appInfo.value.codeGenType && messages.value.length >= 2) {
       iframeUrl.value = `${getStaticPreviewUrl(appInfo.value.codeGenType, appInfo.value.id!)}?t=${Date.now()}`
@@ -575,20 +635,49 @@ onMounted(() => {
 
       <!-- 右侧预览区 -->
       <div class="preview-panel" :class="{ 'edit-mode-active': isEditMode }">
+        <!-- Tab 切换栏：仅在 Vue 项目模式下且（有预览 URL 或有代码文件）时显示 -->
+        <div v-if="isVueProject && (iframeUrl || codeFiles.size > 0)" class="preview-tabs">
+          <button
+            class="preview-tab"
+            :class="{ active: activePreviewTab === 'preview' }"
+            @click="activePreviewTab = 'preview'"
+          >
+            <EyeOutlined /> 网页预览
+          </button>
+          <button
+            class="preview-tab"
+            :class="{ active: activePreviewTab === 'code' }"
+            @click="activePreviewTab = 'code'"
+          >
+            <CodeOutlined /> 源码视图
+            <span v-if="codeFiles.size > 0" class="file-count">{{ codeFiles.size }}</span>
+          </button>
+        </div>
+
+        <!-- 源码视图 Tab（仅限 Vue 项目） -->
+        <CodeViewer
+          v-if="isVueProject && activePreviewTab === 'code'"
+          :files="codeFiles"
+          :activeFile="activeCodeFile"
+          :streaming="generating"
+          @update:activeFile="activeCodeFile = $event"
+          class="code-viewer-fill"
+        />
+
         <!-- 生成中 loading -->
-        <div v-if="generating" class="preview-placeholder">
+        <div v-else-if="generating && (!isVueProject || activePreviewTab === 'preview')" class="preview-placeholder">
           <LoadingOutlined class="loading-icon" />
           <p>正在努力编写代码中，请稍候...</p>
         </div>
 
         <!-- Vue 项目构建中 loading -->
-        <div v-else-if="buildStatusText" class="preview-placeholder">
+        <div v-else-if="buildStatusText && activePreviewTab === 'preview'" class="preview-placeholder">
           <LoadingOutlined class="loading-icon" />
           <p>{{ buildStatusText }}</p>
         </div>
 
         <!-- 有预览 URL：展示 iframe -->
-        <template v-else-if="iframeUrl">
+        <template v-else-if="iframeUrl && (!isVueProject || activePreviewTab === 'preview')">
           <div v-if="isEditMode" class="edit-mode-banner">
             <HighlightOutlined />
             可视化编辑模式已开启 · 悬浮高亮，点击选中元素
@@ -657,8 +746,7 @@ onMounted(() => {
   flex: 3;
   background: #f0f2f5;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
   overflow: hidden;
   position: relative;
 }
@@ -678,10 +766,66 @@ onMounted(() => {
 
 .preview-placeholder {
   display: flex;
+  flex: 1;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: 16px;
   color: #888;
+}
+
+/* Tab 切换栏 */
+.preview-tabs {
+  display: flex;
+  gap: 0;
+  background: #fff;
+  border-bottom: 1px solid #e8e8e8;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+.preview-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border: none;
+  background: none;
+  color: #666;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.preview-tab:hover {
+  color: #333;
+  background: #fafafa;
+}
+
+.preview-tab.active {
+  color: #1890ff;
+  border-bottom-color: #1890ff;
+}
+
+.file-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: #e6f7ff;
+  color: #1890ff;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.code-viewer-fill {
+  flex: 1;
+  min-height: 0;
 }
 
 .placeholder-logo {

@@ -237,3 +237,14 @@ export async function updateApp(body: API.AppUpdateRequest, options?: { [key: st
     ...(options || {}),
   })
 }
+
+/** 获取应用生成的源码文件集合 GET /app/code/files/{appId} */
+export async function getAppCodeFiles(
+  appId: number | string,
+  options?: { [key: string]: any }
+) {
+  return request<any>(`/app/code/files/${appId}`, {
+    method: 'GET',
+    ...(options || {}),
+  })
+}

@@ -1,21 +1,29 @@
 <script setup lang="ts">
-/**
- * ChatMessageList — 聊天消息列表区域
- *
- * 职责：渲染消息气泡列表，包含：
- * - 「加载更多」历史记录按钮
- * - 用户消息气泡 / AI 消息气泡（含思考块 + Markdown 正文）
- * - 流式生成中的 loading 状态气泡
- *
- * 从 AppChatPage.vue 拆出，解耦消息渲染与输入逻辑。
- * 父组件通过 ref="messagesContainer" 控制滚动，这里暴露容器 ref。
- */
+import { ref } from 'vue'
 import { LoadingOutlined, RobotOutlined } from '@ant-design/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
+const userCollapsedKeys = ref<Set<string>>(new Set())
+
+const getThinkingKey = (msg: ChatMessage, index: number, sIdx: number) => {
+  const base = msg.id !== undefined ? `id-${msg.id}` : `idx-${index}`
+  return `${base}-${sIdx}`
+}
+
+const isThinkingExpanded = (key: string) => !userCollapsedKeys.value.has(key)
+
+const handleCollapseChange = (key: string, activeKeys: string[] | string) => {
+  const isExpanded = Array.isArray(activeKeys) ? activeKeys.length > 0 : Boolean(activeKeys)
+  if (isExpanded) {
+    userCollapsedKeys.value.delete(key)
+  } else {
+    userCollapsedKeys.value.add(key)
+  }
+}
+
 /** 消息对象结构 */
 export interface ChatMessage {
-  id?: number
+  id?: number | string
   role: 'user' | 'ai'
   content: string
   createTime?: string
@@ -120,8 +128,13 @@ function parseMessageContent(content: string): { segments: Segment[] } {
           >
             <!-- 思考块折叠面板 -->
             <div v-if="seg.type === 'thinking'" class="thinking-block">
-              <a-collapse :bordered="false" ghost>
-                <a-collapse-panel :key="String(sIdx)">
+              <a-collapse
+                :activeKey="isThinkingExpanded(getThinkingKey(msg, index, sIdx)) ? ['thinking'] : []"
+                @change="(keys: any) => handleCollapseChange(getThinkingKey(msg, index, sIdx), keys)"
+                :bordered="false"
+                ghost
+              >
+                <a-collapse-panel key="thinking">
                   <template #header>
                     <span class="thinking-header">
                       <RobotOutlined aria-hidden="true" /> 推理与思考过程
