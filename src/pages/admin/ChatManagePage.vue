@@ -6,7 +6,7 @@ import { listAllChatHistoryByPageForAdmin } from '@/api/chatHistoryController'
 import { useAdminTable } from '@/composables/useAdminTable'
 import { formatDate } from '@/utils/formatDate'
 import { cleanEmptyStringParams } from '@/utils/cleanParams'
-import AdminPageHeader from '@/components/admin/AdminPageHeader.vue'
+import PageHead from '@/components/PageHead.vue'
 import AdminSearchPanel from '@/components/admin/AdminSearchPanel.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 
@@ -55,9 +55,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="chat-manage-page">
-    <!-- 页头 -->
-    <AdminPageHeader title="对话管理看板" subtitle="管理系统内所有对话记录" />
+  <div class="page">
+    <PageHead title="对话管理" subtitle="按用户、应用或内容检索全部对话记录。" />
 
     <!-- 搜索筛选区域 -->
     <AdminSearchPanel>
@@ -104,7 +103,7 @@ onMounted(() => {
         :pagination="false"
         :scroll="{ x: 'max-content' }"
         row-key="id"
-        class="custom-table glass-table"
+        class="ink-table"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'createTime'">
@@ -126,19 +125,3 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-.chat-manage-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.table-container {
-  background: transparent;
-}
-
-.custom-table :deep(.ant-table-thead > tr > th) {
-  font-weight: 600;
-  color: #262626;
-}
-</style>

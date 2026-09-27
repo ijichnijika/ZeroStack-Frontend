@@ -1,47 +1,96 @@
+<script setup lang="ts">
+withDefaults(defineProps<{ compact?: boolean }>(), { compact: false })
+const year = new Date().getFullYear()
+</script>
+
 <template>
-  <div class="global-footer">
-    <div class="footer-links">
-      <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
-      <span class="divider">|</span>
-      <a href="#">使用指南</a>
-      <span class="divider">|</span>
-      <a href="#">更新日志</a>
+  <footer class="site-footer" :class="{ 'is-compact': compact }">
+    <div class="footer-band">
+      <div class="page band-inner">
+        <p class="band-word" aria-hidden="true">ZeroStack</p>
+        <span class="band-dot" aria-hidden="true"></span>
+      </div>
     </div>
-    <div class="copyright">© 2026 ZeroStack. Created by nijika. All Rights Reserved.</div>
-  </div>
+    <div class="page footer-meta">
+      <span>© {{ year }} ZeroStack · 由 nijika 制作</span>
+      <a href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+    </div>
+  </footer>
 </template>
 
 <style scoped>
-.global-footer {
-  padding: 32px 16px;
-  text-align: center;
-  background: transparent;
-  color: #64748b;
-  font-size: 14px;
+.site-footer {
+  margin-top: 120px;
 }
 
-.footer-links {
-  margin-bottom: 8px;
+.is-compact {
+  margin-top: 72px;
 }
 
-.footer-links a {
-  color: #64748b;
-  transition: color 0.2s ease;
-  text-decoration: none;
+.footer-band {
+  position: relative;
+  overflow: hidden;
+  background: var(--yellow);
 }
 
-.footer-links a:hover {
-  color: #4f46e5;
+.band-inner {
+  position: relative;
+  isolation: isolate;
+  height: clamp(110px, 13vw, 190px);
 }
 
-.divider {
-  margin: 0 16px;
-  color: #e2e8f0;
+.is-compact .band-inner {
+  height: 80px;
 }
 
-.copyright {
-  font-family: inherit;
+.is-compact .band-word {
+  font-size: 64px;
+}
+
+.is-compact .band-dot {
+  width: 100px;
+  right: 28px;
+}
+
+.band-word {
+  position: absolute;
+  left: clamp(20px, 4vw, 48px);
+  bottom: -0.2em;
+  font-family: var(--font-wide);
+  font-stretch: 125%;
+  font-weight: 900;
+  font-size: min(calc((100vw - 2 * clamp(20px, 4vw, 48px)) / 7.6), 162px);
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  white-space: nowrap;
+  user-select: none;
+}
+
+.band-dot {
+  position: absolute;
+  right: clamp(20px, 8vw, 120px);
+  top: 50%;
+  width: clamp(120px, 20vw, 280px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pink);
+  mix-blend-mode: multiply;
+  transform: translateY(-38%);
+  z-index: -1;
+}
+
+.footer-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-block: 18px 28px;
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--ink-3);
+}
+
+.footer-meta a {
+  color: var(--ink-2);
+  font-weight: 600;
 }
 </style>

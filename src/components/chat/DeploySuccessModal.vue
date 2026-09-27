@@ -1,17 +1,10 @@
 <script setup lang="ts">
-/**
- * DeploySuccessModal — 部署成功弹窗
- *
- * 独立出来的原因：弹窗内容（复制链接、访问网站）与 AppChatPage 的生成逻辑无关，
- * 拆分后可单独维护样式，也方便未来在其他页面复用（如首页应用卡片的部署入口）。
- */
-import { CheckCircleFilled, CopyOutlined } from '@ant-design/icons-vue'
-import { DEPLOY_BASE_URL } from '@/config/env'
+import { computed, ref } from 'vue'
+import { CopyOutlined, CheckOutlined, ExportOutlined } from '@ant-design/icons-vue'
+import { getDeployUrl } from '@/config/env'
 
 const props = defineProps<{
-  /** 控制弹窗显示（v-model） */
   open: boolean
-  /** 已部署的 deploy key */
   deployKey: string
 }>()
 
@@ -20,94 +13,154 @@ const emit = defineEmits<{
   (e: 'copyLink'): void
   (e: 'visitWebsite'): void
 }>()
+
+const copied = ref(false)
+const url = computed(() => (props.deployKey ? getDeployUrl(props.deployKey) : ''))
+
+const handleCopy = () => {
+  emit('copyLink')
+  copied.value = true
+  setTimeout(() => (copied.value = false), 2000)
+}
 </script>
 
 <template>
   <a-modal
     :open="open"
     :footer="null"
-    :width="460"
+    :width="520"
+    centered
+    :closable="false"
+    wrap-class-name="deploy-modal"
     @update:open="emit('update:open', $event)"
   >
-    <div class="modal-body">
-      <CheckCircleFilled class="success-icon" />
-      <h2 class="modal-title">网站部署成功！</h2>
-      <p class="modal-desc">你的网站已经成功部署，可以通过以下链接访问：</p>
-
-      <!-- 链接展示 + 复制 -->
-      <div class="link-box">
-        <span class="link-text">{{ DEPLOY_BASE_URL }}/{{ deployKey }}</span>
-        <a-button type="text" class="copy-btn" @click="emit('copyLink')">
-          <template #icon><CopyOutlined /></template>
-        </a-button>
+    <div class="deploy">
+      <div class="deploy-banner" aria-hidden="true">
+        <span class="ban-pink"></span>
+        <span class="ban-blue halftone"></span>
+        <span class="ban-word">上线了</span>
       </div>
 
-      <!-- 操作按钮 -->
-      <a-space size="middle">
-        <a-button type="primary" size="large" class="action-btn" @click="emit('visitWebsite')">
-          访问网站
-        </a-button>
-        <a-button size="large" class="action-btn" @click="emit('update:open', false)">
-          关闭
-        </a-button>
-      </a-space>
+      <div class="deploy-body">
+        <h2 class="deploy-title">网站已部署，任何人都可以打开</h2>
+        <p class="deploy-desc">把下面的地址发给别人即可访问。之后修改了内容，重新部署就会更新到同一个地址。</p>
+
+        <div class="url-row">
+          <code class="url-text">{{ url }}</code>
+          <button type="button" class="btn btn--line btn--sm" @click="handleCopy">
+            <CheckOutlined v-if="copied" />
+            <CopyOutlined v-else />
+            {{ copied ? '已复制' : '复制' }}
+          </button>
+        </div>
+
+        <div class="deploy-actions">
+          <button type="button" class="btn btn--quiet" @click="emit('update:open', false)">关闭</button>
+          <button type="button" class="btn btn--pink" @click="emit('visitWebsite')">
+            打开网站
+            <ExportOutlined />
+          </button>
+        </div>
+      </div>
     </div>
   </a-modal>
 </template>
 
 <style scoped>
-.modal-body {
+.deploy {
+  margin: -20px -24px;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.deploy-banner {
+  position: relative;
+  isolation: isolate;
+  height: 168px;
+  overflow: hidden;
+  background: var(--yellow);
+}
+
+.ban-pink {
+  position: absolute;
+  right: -40px;
+  top: -70px;
+  width: 240px;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: var(--pink);
+  mix-blend-mode: multiply;
+  animation: ban-in 800ms var(--ease-out) both;
+}
+
+.ban-blue {
+  position: absolute;
+  left: 38%;
+  bottom: -30px;
+  width: 190px;
+  height: 120px;
+  color: var(--blue);
+  mix-blend-mode: multiply;
+  animation: ban-in 800ms var(--ease-out) 90ms both;
+}
+
+.ban-word {
+  position: absolute;
+  left: 28px;
+  bottom: 18px;
+  font-family: var(--font-display);
+  font-size: 64px;
+  line-height: 1;
+  color: var(--ink);
+}
+
+@keyframes ban-in {
+  from {
+    transform: translate(14px, -10px);
+    opacity: 0;
+  }
+}
+
+.deploy-body {
+  padding: 24px 28px 26px;
+}
+
+.deploy-title {
+  font-family: var(--font-body);
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.deploy-desc {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.url-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  text-align: center;
-  padding: 24px 0 12px 0;
+  gap: 10px;
+  margin-top: 20px;
+  padding: 8px 8px 8px 14px;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius-lg);
 }
 
-.success-icon {
-  font-size: 56px;
-  color: #52c41a;
-  margin-bottom: 20px;
-}
-
-.modal-title {
-  margin-bottom: 16px;
-  font-weight: 600;
-  font-size: 20px;
-}
-
-.modal-desc {
-  color: #666;
-  margin-bottom: 28px;
-}
-
-.link-box {
-  display: flex;
-  align-items: center;
-  border: 1px solid #d9d9d9;
-  border-radius: 6px;
-  padding: 0 4px 0 12px;
-  margin-bottom: 32px;
-  height: 44px;
-  background: #fafafa;
-  width: 100%;
-}
-
-.link-text {
+.url-text {
   flex: 1;
-  text-align: left;
-  color: #333;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 13px;
 }
 
-.copy-btn {
-  color: #666;
-  flex-shrink: 0;
-}
-
-.action-btn {
-  width: 120px;
+.deploy-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 24px;
 }
 </style>

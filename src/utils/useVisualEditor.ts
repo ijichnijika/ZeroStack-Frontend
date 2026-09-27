@@ -3,12 +3,22 @@ import { ref, onUnmounted } from 'vue'
 /**
  * 用户选中的 iframe 内元素信息
  */
+export interface SelectedElementRect {
+  top: number
+  left: number
+  width: number
+  height: number
+  right: number
+  bottom: number
+}
+
 export interface SelectedElementInfo {
   tagName: string
   id: string
   className: string
   textContent: string
   selector: string
+  rect?: SelectedElementRect
 }
 
 const INJECTED_STYLE_ID = '__ve_style__'
@@ -81,14 +91,14 @@ export function useVisualEditor() {
         style.id = INJECTED_STYLE_ID
         style.textContent = `
           .__ve_hover {
-            outline: 2px dashed #1890ff !important;
+            outline: 2px dashed #0078bf !important;
             outline-offset: 2px !important;
             cursor: crosshair !important;
           }
           .__ve_selected {
-            outline: 3px solid #f5222d !important;
+            outline: 3px solid #ff48b0 !important;
             outline-offset: 2px !important;
-            background-color: rgba(245,34,45,0.04) !important;
+            background-color: rgba(255,72,176,0.08) !important;
           }
         `
         doc.head.appendChild(style)
@@ -127,12 +137,24 @@ export function useVisualEditor() {
           .filter(c => !c.startsWith('__ve_'))
           .join(' ')
 
+        // 计算相对视口坐标矩形
+        const r = target.getBoundingClientRect()
+        const rect: SelectedElementRect = {
+          top: r.top,
+          left: r.left,
+          width: r.width,
+          height: r.height,
+          right: r.right,
+          bottom: r.bottom,
+        }
+
         const info: SelectedElementInfo = {
           tagName: target.tagName.toLowerCase(),
           id: target.id || '',
           className: cleanClassName,
           textContent: (target.textContent || '').trim().slice(0, 80),
           selector: buildSelector(target, body),
+          rect,
         }
 
         // 通过 postMessage 传递给主页面（同域名）
@@ -143,8 +165,12 @@ export function useVisualEditor() {
       body.addEventListener('mouseout', onMouseOut, true)
       body.addEventListener('click', onClick, true)
 
+      interface VisualEditorIFrameElement extends HTMLIFrameElement {
+        __ve_cleanup?: () => void
+      }
+
       // 将清理函数挂在 iframe 元素上，方便后续调用
-      ;(iframe as any).__ve_cleanup = () => {
+      ;(iframe as VisualEditorIFrameElement).__ve_cleanup = () => {
         body.removeEventListener('mouseover', onMouseOver, true)
         body.removeEventListener('mouseout', onMouseOut, true)
         body.removeEventListener('click', onClick, true)
@@ -161,9 +187,11 @@ export function useVisualEditor() {
 
   function cleanupIframe(iframe: HTMLIFrameElement) {
     try {
-      if (typeof (iframe as any).__ve_cleanup === 'function') {
-        ;(iframe as any).__ve_cleanup()
-        delete (iframe as any).__ve_cleanup
+      type ExtendedIFrame = HTMLIFrameElement & { __ve_cleanup?: () => void }
+      const extIframe = iframe as ExtendedIFrame
+      if (typeof extIframe.__ve_cleanup === 'function') {
+        extIframe.__ve_cleanup()
+        delete extIframe.__ve_cleanup
       }
     } catch (err) {
       console.error('[useVisualEditor] 清理失败:', err)

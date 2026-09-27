@@ -2,21 +2,23 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
+import dayjs from 'dayjs'
+import { ArrowLeftOutlined, MessageOutlined, UserOutlined } from '@ant-design/icons-vue'
 import { getDeployUrl } from '@/config/env'
 import { useUserStore } from '@/stores/user'
 import { getAppVoById, getAppVoByIdByAdmin, updateApp, updateAppByAdmin } from '@/api/appController'
-import { ArrowLeftOutlined } from '@ant-design/icons-vue'
-import dayjs from 'dayjs'
+import { getCodeGenTypeConfig } from '@/enums/codeGenType'
+import PageHead from '@/components/PageHead.vue'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
+// 雪花 ID 保留字符串，避免精度丢失
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const appId = route.params.id as any
 const loading = ref(false)
 const submitLoading = ref(false)
-
-
 const appInfo = ref<API.AppVO | null>(null)
 
 const formState = ref({
@@ -25,46 +27,37 @@ const formState = ref({
   priority: 0,
 })
 
-const isAdmin = computed(() => {
-  return userStore.loginUser?.userRole === 'admin'
-})
+const isAdmin = computed(() => userStore.loginUser?.userRole === 'admin')
+const typeConfig = computed(() => getCodeGenTypeConfig(appInfo.value?.codeGenType))
+const fmt = (t?: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '—')
+
+const fillForm = (app: API.AppVO) => {
+  formState.value = {
+    appName: app.appName || '',
+    cover: app.cover || '',
+    priority: app.priority || 0,
+  }
+}
 
 const loadAppInfo = async () => {
   loading.value = true
   try {
-    let res
-    if (isAdmin.value) {
-      res = await getAppVoByIdByAdmin({ id: appId })
-    } else {
-      res = await getAppVoById({ id: appId })
-    }
-
-    if (res.data?.code === 0 && res.data?.data) {
-      const app = res.data.data
-      appInfo.value = app
-      formState.value = {
-        appName: app.appName || '',
-        cover: app.cover || '',
-        priority: app.priority || 0,
-      }
+    const res = isAdmin.value ? await getAppVoByIdByAdmin({ id: appId }) : await getAppVoById({ id: appId })
+    if (res.data?.code === 0 && res.data.data) {
+      appInfo.value = res.data.data
+      fillForm(res.data.data)
     } else {
       message.error(res.data?.message || '获取应用信息失败')
     }
-  } catch (error: any) {
-    message.error('网络异常: ' + error.message)
+  } catch (error: unknown) {
+    message.error(`获取应用信息失败：${error instanceof Error ? error.message : '网络异常'}`)
   } finally {
     loading.value = false
   }
 }
 
 const handleReset = () => {
-  if (appInfo.value) {
-    formState.value = {
-      appName: appInfo.value.appName || '',
-      cover: appInfo.value.cover || '',
-      priority: appInfo.value.priority || 0,
-    }
-  }
+  if (appInfo.value) fillForm(appInfo.value)
 }
 
 const handleSubmit = async () => {
@@ -72,220 +65,228 @@ const handleSubmit = async () => {
     message.warning('应用名称不能为空')
     return
   }
-
   submitLoading.value = true
   try {
-    let res
-    if (isAdmin.value) {
-      res = await updateAppByAdmin({
-        id: appId,
-        appName: formState.value.appName,
-        cover: formState.value.cover,
-        priority: formState.value.priority,
-      })
-    } else {
-      res = await updateApp({
-        id: appId,
-        appName: formState.value.appName,
-      })
-    }
-
+    const res = isAdmin.value
+      ? await updateAppByAdmin({ id: appId, ...formState.value })
+      : await updateApp({ id: appId, appName: formState.value.appName })
     if (res.data?.code === 0) {
-      message.success('更新成功')
+      message.success('已保存')
       router.back()
     } else {
-      message.error(res.data?.message || '更新失败')
+      message.error(res.data?.message || '保存失败')
     }
-  } catch (error: any) {
-    message.error('网络异常: ' + error.message)
+  } catch (error: unknown) {
+    message.error(`保存失败：${error instanceof Error ? error.message : '网络异常'}`)
   } finally {
     submitLoading.value = false
   }
 }
 
-const gotoChat = () => {
-  router.push(`/app/chat/${appId}`)
-}
-
-onMounted(() => {
-  if (!userStore.loginUser?.id) {
-    userStore.fetchLoginUser().then(() => {
-      loadAppInfo()
-    })
-  } else {
-    loadAppInfo()
-  }
+onMounted(async () => {
+  if (!userStore.loginUser?.id) await userStore.fetchLoginUser()
+  loadAppInfo()
 })
 </script>
 
 <template>
-  <div class="app-edit-page">
-    <div class="page-header">
-      <a-button type="text" @click="router.back()" class="back-btn">
-        <template #icon><ArrowLeftOutlined /></template>
-        返回
-      </a-button>
-      <h2>编辑应用信息</h2>
-    </div>
+  <div class="page">
+    <button type="button" class="back-link" @click="router.back()">
+      <ArrowLeftOutlined />
+      返回
+    </button>
+    <PageHead title="编辑应用" :subtitle="appInfo?.appName ? `正在编辑「${appInfo.appName}」` : '修改应用的名称与展示信息'">
+      <router-link :to="`/app/chat/${appId}`" class="btn btn--line">
+        <MessageOutlined />
+        进入对话
+      </router-link>
+    </PageHead>
 
-    <div class="content-wrapper">
-      <a-spin :spinning="loading">
-        <!-- 基本信息模块 -->
-        <div class="module-title">基本信息</div>
-        <a-form layout="vertical" class="edit-form">
+    <a-spin :spinning="loading">
+      <div class="edit">
+        <a-form layout="vertical" class="edit-form" @finish="handleSubmit">
           <a-form-item label="应用名称" required>
-            <a-input v-model:value="formState.appName" placeholder="请输入应用名称" show-count :maxlength="50" size="large" />
+            <a-input v-model:value="formState.appName" placeholder="给应用起个名字" show-count :maxlength="50" />
           </a-form-item>
 
-          <a-form-item label="应用封面">
-            <a-input v-model:value="formState.cover" placeholder="请输入应用封面图片的 URL" size="large" :disabled="!isAdmin" />
-            <div v-if="formState.cover" class="cover-preview">
-              <img :src="formState.cover" alt="封面预览" />
-            </div>
-            <div class="field-desc">支持图片链接，建议尺寸: 400x300</div>
+          <a-form-item label="封面图地址" :extra="isAdmin ? '建议使用 16:10 的截图' : '仅管理员可修改封面'">
+            <a-input v-model:value="formState.cover" placeholder="https://…" :disabled="!isAdmin" />
           </a-form-item>
 
-          <a-form-item label="优先级">
-            <a-input-number v-model:value="formState.priority" :disabled="!isAdmin" :min="0" :max="99" style="width: 240px" size="large" />
-            <div class="field-desc">设置为99表示精选应用</div>
+          <a-form-item label="优先级" :extra="isAdmin ? '设为 99 即进入首页精选' : '仅管理员可修改优先级'">
+            <a-input-number v-model:value="formState.priority" :disabled="!isAdmin" :min="0" :max="99" style="width: 200px" />
           </a-form-item>
 
-          <a-form-item label="初始提示词">
-            <a-textarea :value="appInfo?.initPrompt" disabled :auto-size="{ minRows: 4, maxRows: 8 }" show-count :maxlength="1000" size="large" />
-            <div class="field-desc">初始提示词不可修改</div>
+          <a-form-item label="初始需求" extra="创建时的需求原文，不可修改">
+            <a-textarea :value="appInfo?.initPrompt" disabled :auto-size="{ minRows: 4, maxRows: 10 }" />
           </a-form-item>
 
-          <a-form-item label="生成类型">
-            <a-input :value="appInfo?.codeGenType" disabled size="large" />
-            <div class="field-desc">生成类型不可修改</div>
-          </a-form-item>
-
-          <a-form-item label="部署密钥">
-            <a-input :value="appInfo?.deployKey" disabled size="large" />
-            <div class="field-desc">部署密钥不可修改</div>
-          </a-form-item>
-
-          <a-form-item class="form-actions">
-            <a-space size="large">
-              <a-button type="primary" size="large" :loading="submitLoading" @click="handleSubmit">
-                保存修改
-              </a-button>
-              <a-button size="large" @click="handleReset">
-                重置
-              </a-button>
-              <a-button type="link" size="large" @click="gotoChat">
-                进入对话
-              </a-button>
-            </a-space>
-          </a-form-item>
+          <div class="edit-actions">
+            <a-button type="primary" html-type="submit" :loading="submitLoading" class="pill-btn">保存修改</a-button>
+            <a-button class="pill-btn" @click="handleReset">还原</a-button>
+          </div>
         </a-form>
-        
-        <a-divider style="margin: 40px 0" />
 
-        <!-- 应用信息模块 -->
-        <div class="module-title">应用信息</div>
-        <a-descriptions bordered :column="{ xxl: 2, xl: 2, lg: 2, md: 1, sm: 1, xs: 1 }" class="info-descriptions">
-          <a-descriptions-item label="应用ID">
-            {{ appInfo?.id || '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="创建者">
-            <div class="creator-info" v-if="appInfo?.user">
-              <a-avatar size="small" :src="appInfo.user.userAvatar" />
-              <span>{{ appInfo.user.userName || appInfo.user.userAccount }}</span>
+        <aside class="edit-side">
+          <div class="cover-frame">
+            <img v-if="formState.cover" :src="formState.cover" alt="封面预览" />
+            <div v-else class="cover-empty halftone" aria-hidden="true"></div>
+          </div>
+
+          <dl class="side-facts">
+            <div>
+              <dt>生成类型</dt>
+              <dd>
+                <span v-if="typeConfig" class="tag" :class="`tag--${typeConfig.ink}`">{{ typeConfig.label }}</span>
+                <span v-else>—</span>
+              </dd>
             </div>
-            <span v-else>-</span>
-          </a-descriptions-item>
-          <a-descriptions-item label="创建时间">
-            {{ appInfo?.createTime ? dayjs(appInfo.createTime).format('YYYY-MM-DD HH:mm:ss') : '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="更新时间">
-            {{ appInfo?.updateTime ? dayjs(appInfo.updateTime).format('YYYY-MM-DD HH:mm:ss') : '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="部署时间">
-            {{ appInfo?.deployedTime ? dayjs(appInfo.deployedTime).format('YYYY-MM-DD HH:mm:ss') : '-' }}
-          </a-descriptions-item>
-          <a-descriptions-item label="访问链接">
-            <a v-if="appInfo?.deployKey" :href="getDeployUrl(appInfo.deployKey)" target="_blank">查看预览</a>
-            <span v-else>-</span>
-          </a-descriptions-item>
-        </a-descriptions>
-      </a-spin>
-    </div>
+            <div>
+              <dt>创建者</dt>
+              <dd class="creator">
+                <a-avatar :size="22" :src="appInfo?.user?.userAvatar">
+                  <template #icon><UserOutlined /></template>
+                </a-avatar>
+                {{ appInfo?.user?.userName || appInfo?.user?.userAccount || '—' }}
+              </dd>
+            </div>
+            <div>
+              <dt>应用 ID</dt>
+              <dd class="mono">{{ appInfo?.id || '—' }}</dd>
+            </div>
+            <div>
+              <dt>创建时间</dt>
+              <dd class="tabular">{{ fmt(appInfo?.createTime) }}</dd>
+            </div>
+            <div>
+              <dt>更新时间</dt>
+              <dd class="tabular">{{ fmt(appInfo?.updateTime) }}</dd>
+            </div>
+            <div>
+              <dt>部署时间</dt>
+              <dd class="tabular">{{ fmt(appInfo?.deployedTime) }}</dd>
+            </div>
+            <div>
+              <dt>访问地址</dt>
+              <dd>
+                <a v-if="appInfo?.deployKey" :href="getDeployUrl(appInfo.deployKey)" target="_blank" rel="noopener">
+                  /{{ appInfo.deployKey }}
+                </a>
+                <span v-else>未部署</span>
+              </dd>
+            </div>
+          </dl>
+        </aside>
+      </div>
+    </a-spin>
   </div>
 </template>
 
 <style scoped>
-.app-edit-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.page-header {
-  display: flex;
+.back-link {
+  display: inline-flex;
   align-items: center;
-  gap: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.back-btn {
-  color: #333;
-  padding: 4px 8px;
-}
-
-.page-header h2 {
-  font-size: 20px;
+  gap: 6px;
+  margin-top: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 14px;
   font-weight: 600;
-  color: #1a1a1a;
-  margin-bottom: 0;
+  color: var(--ink-2);
+  cursor: pointer;
 }
 
-.content-wrapper {
-  width: 100%;
+.back-link:hover {
+  color: var(--ink);
 }
 
-.module-title {
-  font-size: 16px;
-  font-weight: 600;
-  margin-bottom: 24px;
-  color: #1a1a1a;
+.back-link + :deep(.page-head) {
+  padding-top: 16px;
 }
 
-.cover-preview {
-  margin-top: 12px;
-  border-radius: 6px;
-  overflow: hidden;
-  max-width: 320px;
-  border: 1px solid #f0f0f0;
+.edit {
+  display: grid;
+  grid-template-columns: minmax(0, 620px) minmax(280px, 380px);
+  gap: clamp(32px, 6vw, 96px);
+  align-items: start;
 }
 
-.cover-preview img {
-  width: 100%;
-  height: auto;
-  display: block;
-}
-
-.edit-form :deep(.ant-form-item-label > label) {
-  font-weight: 500;
-  color: #333;
-}
-
-.field-desc {
-  font-size: 13px;
-  color: #8c8c8c;
+.edit-actions {
+  display: flex;
+  gap: 10px;
   margin-top: 8px;
-  line-height: 1.5;
 }
 
-.form-actions {
-  margin-top: 40px;
-  margin-bottom: 0;
+.pill-btn {
+  height: 42px;
+  padding: 0 24px;
+  border-radius: var(--pill);
+  font-weight: 700;
 }
 
-.creator-info {
+.cover-frame {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--blue);
+}
+
+.cover-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+}
+
+.cover-empty {
+  width: 100%;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.side-facts {
+  margin: 20px 0 0;
+}
+
+.side-facts div {
   display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--rule);
+  font-size: 14px;
+}
+
+.side-facts dt {
+  color: var(--ink-3);
+  flex-shrink: 0;
+}
+
+.side-facts dd {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  text-align: right;
+}
+
+.creator {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+}
+
+@media (max-width: 900px) {
+  .edit {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

@@ -1,114 +1,137 @@
 <script setup lang="ts">
-import { UserOutlined, EditOutlined, DeleteOutlined, InfoCircleOutlined } from '@ant-design/icons-vue'
+import { computed } from 'vue'
+import { UserOutlined, EditOutlined, DeleteOutlined, EllipsisOutlined } from '@ant-design/icons-vue'
 import dayjs from 'dayjs'
-import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
+import { getCodeGenTypeConfig } from '@/enums/codeGenType'
+import { getDeployUrl } from '@/config/env'
 
-const props = defineProps({
-  appInfo: {
-    type: Object as () => API.AppVO,
-    required: false
-  },
-  canManage: {
-    type: Boolean,
-    default: false
-  }
-})
+const props = defineProps<{
+  appInfo?: API.AppVO
+  canManage: boolean
+}>()
 
-const emit = defineEmits(['edit', 'delete'])
+const emit = defineEmits<{
+  (e: 'edit'): void
+  (e: 'delete'): void
+}>()
+
+const typeConfig = computed(() => getCodeGenTypeConfig(props.appInfo?.codeGenType))
+const fmt = (t?: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '—')
 </script>
 
 <template>
-  <a-popover placement="bottomRight" trigger="click">
+  <a-popover placement="bottomRight" trigger="click" :arrow="false">
     <template #content>
-      <div class="app-info-popover">
-        <div class="info-section">
-          <div class="info-label">创建者</div>
-          <div class="info-value creator-info">
-            <a-avatar size="small" :src="appInfo?.user?.userAvatar">
-              <template #icon><UserOutlined /></template>
-            </a-avatar>
-            <span class="username">{{ appInfo?.user?.userName || appInfo?.user?.userAccount || '未知' }}</span>
+      <div class="info">
+        <div class="info-creator">
+          <a-avatar :size="32" :src="appInfo?.user?.userAvatar" class="creator-avatar">
+            <template #icon><UserOutlined /></template>
+          </a-avatar>
+          <div>
+            <p class="creator-name">{{ appInfo?.user?.userName || appInfo?.user?.userAccount || '未知作者' }}</p>
+            <p class="creator-sub">创建于 {{ fmt(appInfo?.createTime) }}</p>
           </div>
         </div>
-        <div class="info-section">
-          <div class="info-label">创建时间</div>
-          <div class="info-value">{{ appInfo?.createTime ? dayjs(appInfo.createTime).format('YYYY-MM-DD HH:mm:ss') : '-' }}</div>
-        </div>
-        <div class="info-section">
-          <div class="info-label">生成类型</div>
-          <div class="info-value">
-            <a-tag v-if="appInfo?.codeGenType" :color="CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.color || 'blue'">
-              {{ CODE_GEN_TYPE_CONFIG[appInfo.codeGenType as keyof typeof CODE_GEN_TYPE_CONFIG]?.label || appInfo.codeGenType }}
-            </a-tag>
-            <span v-else>-</span>
+        <dl class="info-list">
+          <div>
+            <dt>生成类型</dt>
+            <dd>
+              <span v-if="typeConfig" class="tag" :class="`tag--${typeConfig.ink}`">{{ typeConfig.label }}</span>
+              <span v-else>尚未生成</span>
+            </dd>
           </div>
-        </div>
-        
-        <!-- 操作栏仅本人或管理员可见 -->
-        <div v-if="canManage" class="action-section">
-          <a-divider style="margin: 8px 0" />
-          <a-space>
-            <a-button type="link" size="small" @click="emit('edit')">
-              <template #icon><EditOutlined /></template>
-              修改
-            </a-button>
-            <a-popconfirm
-              title="确定要删除该应用吗？此操作无法撤销"
-              ok-text="确定"
-              cancel-text="取消"
-              @confirm="emit('delete')"
-            >
-              <a-button type="link" danger size="small">
-                <template #icon><DeleteOutlined /></template>
-                删除
-              </a-button>
-            </a-popconfirm>
-          </a-space>
+          <div>
+            <dt>部署地址</dt>
+            <dd>
+              <a v-if="appInfo?.deployKey" :href="getDeployUrl(appInfo.deployKey)" target="_blank" rel="noopener">
+                /{{ appInfo.deployKey }}
+              </a>
+              <span v-else>未部署</span>
+            </dd>
+          </div>
+        </dl>
+        <div v-if="canManage" class="info-actions">
+          <button type="button" class="btn btn--quiet btn--sm" @click="emit('edit')">
+            <EditOutlined />
+            编辑信息
+          </button>
+          <a-popconfirm
+            title="删除后无法恢复，确定删除这个应用吗？"
+            ok-text="删除"
+            cancel-text="取消"
+            :ok-button-props="{ danger: true }"
+            @confirm="emit('delete')"
+          >
+            <button type="button" class="btn btn--danger btn--sm">
+              <DeleteOutlined />
+              删除
+            </button>
+          </a-popconfirm>
         </div>
       </div>
     </template>
-    <a-button type="default" style="margin-right: 12px;">
-      <template #icon><InfoCircleOutlined /></template>
-      应用详情
-    </a-button>
+    <button type="button" class="btn btn--quiet btn--icon btn--sm" aria-label="应用详情" title="应用详情">
+      <EllipsisOutlined />
+    </button>
   </a-popover>
 </template>
 
 <style scoped>
-.app-info-popover {
-  width: 240px;
+.info {
+  width: 268px;
+  padding: 4px;
 }
 
-.info-section {
-  margin-bottom: 12px;
-}
-
-.info-section:last-child {
-  margin-bottom: 0;
-}
-
-.info-label {
-  font-size: 12px;
-  color: #8c8c8c;
-  margin-bottom: 4px;
-}
-
-.info-value {
-  font-size: 14px;
-  color: #333;
-}
-
-.creator-info {
+.info-creator {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--rule);
 }
 
-.username {
-  font-weight: 500;
+.creator-avatar {
+  background: var(--pink);
+  color: var(--ink);
 }
 
-.action-section {
-  margin-top: 8px;
+.creator-name {
+  font-weight: 700;
+}
+
+.creator-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.info-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+.info-list div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+
+.info-list dt {
+  color: var(--ink-3);
+}
+
+.info-list dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.info-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid var(--rule);
 }
 </style>

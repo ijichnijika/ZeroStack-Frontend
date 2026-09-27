@@ -1,441 +1,272 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { useUserStore } from '@/stores/user'
 import { message } from 'ant-design-vue'
-import { ArrowUpOutlined } from '@ant-design/icons-vue'
-import { addApp, listMyAppVoByPage, listGoodAppVoByPage } from '@/api/appController'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
-import 'dayjs/locale/zh-cn'
-import AppCard from '@/components/AppCard.vue'
-import AgentSwitch from '@/components/AgentSwitch.vue'
-
-dayjs.extend(relativeTime)
-dayjs.locale('zh-cn')
+import { useUserStore } from '@/stores/user'
+import { addApp, listGoodAppVoByPage, listMyAppVoByPage } from '@/api/appController'
+import { usePagedApps } from '@/composables/usePagedApps'
+import PromptComposer from '@/components/home/PromptComposer.vue'
+import ProofSheet from '@/components/home/ProofSheet.vue'
+import RunStrip from '@/components/home/RunStrip.vue'
+import AppShelf from '@/components/home/AppShelf.vue'
+import { PRESETS, type PresetKey } from '@/components/home/presets'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const prompt = ref('')
+const useAgent = ref(false)
 const submitting = ref(false)
-const useAgent = ref(false) // 默认不开启 agent 模式
+const activePreset = ref<PresetKey | null>(null)
+const composerRef = ref<InstanceType<typeof PromptComposer> | null>(null)
 
-const handleAdd = async () => {
-  if (!prompt.value.trim()) {
-    message.warning('请输入您的需求提示词')
+const isLoggedIn = computed(() => Boolean(userStore.loginUser?.id))
+
+const proofLayout = computed<PresetKey>(() => activePreset.value ?? 'blog')
+
+const proofTitle = computed(() => {
+  const preset = PRESETS.find((p) => p.key === activePreset.value)
+  const text = prompt.value.trim()
+  if (!text || (preset && text === preset.prompt)) {
+    return preset?.sampleTitle ?? '你的网站，从这一句开始'
+  }
+  const firstClause = text.split(/[，。,.!！？?\n：:；;]/).find((s) => s.trim()) ?? text
+  const clause = firstClause.trim()
+  return clause.length > 20 ? `${clause.slice(0, 20)}…` : clause
+})
+
+const applyPreset = (key: PresetKey) => {
+  const preset = PRESETS.find((p) => p.key === key)
+  if (!preset) return
+  activePreset.value = key
+  prompt.value = preset.prompt
+}
+
+const handleSubmit = async () => {
+  const text = prompt.value.trim()
+  if (!text) {
+    message.warning('先写下你想做的网站')
+    composerRef.value?.focus()
     return
   }
-  if (!userStore.loginUser?.id) {
-    message.warning('请先登录')
-    router.push('/user/login')
+  if (!isLoggedIn.value) {
+    message.info('登录后即可开始生成')
+    router.push(`/user/login?redirect=${encodeURIComponent('/')}`)
     return
   }
   submitting.value = true
   try {
-    const res = await addApp({ initPrompt: prompt.value })
+    const res = await addApp({ initPrompt: text })
     if (res.data.code === 0 && res.data.data) {
-      message.success('创建成功')
       router.push(`/app/chat/${res.data.data}?auto=1&agent=${useAgent.value}`)
     } else {
-      message.error(res.data.message || '创建失败')
+      message.error(res.data.message || '创建失败，请稍后重试')
     }
-  } catch (error: any) {
-    message.error('请求失败: ' + error.message)
+  } catch (error: unknown) {
+    message.error(`创建失败：${error instanceof Error ? error.message : '网络异常'}`)
   } finally {
     submitting.value = false
   }
 }
 
-// 分页列表逻辑
-const myAppList = ref<API.AppVO[]>([])
-const myAppTotal = ref(0)
-const myAppPage = ref(1)
-
-const goodAppList = ref<API.AppVO[]>([])
-const goodAppTotal = ref(0)
-const goodAppPage = ref(1)
-
-const pageSize = 8
-
-const loadMyAppList = async () => {
-  if (!userStore.loginUser?.id) return
-  try {
-    const res = await listMyAppVoByPage({
-      pageNum: myAppPage.value,
-      pageSize,
-      sortField: 'createTime',
-      sortOrder: 'descend'
-    })
-    if (res.data.code === 0 && res.data.data) {
-      myAppList.value = res.data.data.records || []
-      myAppTotal.value = Number(res.data.data.totalRow) || 0
-    }
-  } catch (e: any) {
-    message.error('加载我的应用失败')
-  }
+const focusComposer = () => {
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  composerRef.value?.focus()
 }
 
-const loadGoodAppList = async () => {
-  try {
-    const res = await listGoodAppVoByPage({
-      pageNum: goodAppPage.value,
-      pageSize,
-      sortField: 'createTime',
-      sortOrder: 'descend'
-    })
-    if (res.data.code === 0 && res.data.data) {
-      goodAppList.value = res.data.data.records || []
-      goodAppTotal.value = Number(res.data.data.totalRow) || 0
-    }
-  } catch (e: any) {
-    message.error('加载精选应用失败')
-  }
-}
-
-const placeholderText = ref('使用ZeroStack帮我生成网站…')
-const examples = ['个人博客', '企业官网', '电商后台', '数据看板', '在线文档']
-let currentExampleIndex = 0
-let isDeleting = false
-let currentText = ''
-let typeTimeout: any = null
-
-const typeWriter = () => {
-  // 减弱动态效果适配
-  if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    placeholderText.value = '使用ZeroStack帮我生成现代化全栈网站…'
-    return
-  }
-
-  const targetText = examples[currentExampleIndex] || ''
-  if (isDeleting) {
-    currentText = targetText.substring(0, currentText.length - 1)
-  } else {
-    currentText = targetText.substring(0, currentText.length + 1)
-  }
-  
-  placeholderText.value = `使用ZeroStack帮我生成${currentText}网站…`
-  
-  let typingSpeed = isDeleting ? 50 : 150
-  
-  if (!isDeleting && currentText === targetText) {
-    typingSpeed = 2000
-    isDeleting = true
-  } else if (isDeleting && currentText === '') {
-    isDeleting = false
-    currentExampleIndex = (currentExampleIndex + 1) % examples.length
-    typingSpeed = 500
-  }
-  
-  typeTimeout = setTimeout(typeWriter, typingSpeed)
-}
+const mine = usePagedApps(listMyAppVoByPage)
+const featured = usePagedApps(listGoodAppVoByPage)
 
 onMounted(() => {
-  typeWriter()
-  loadMyAppList()
-  loadGoodAppList()
+  if (isLoggedIn.value) mine.load()
+  featured.load()
 })
-
-onUnmounted(() => {
-  if (typeTimeout) clearTimeout(typeTimeout)
-})
-
-const handleMyPageChange = (page: number) => {
-  myAppPage.value = page
-  loadMyAppList()
-}
-
-const handleGoodPageChange = (page: number) => {
-  goodAppPage.value = page
-  loadGoodAppList()
-}
-
-const goChat = (appId: number) => {
-  router.push(`/app/chat/${appId}?view=1`)
-}
 </script>
 
 <template>
-  <div class="home-container">
-    <div class="hero-section">
-      <div class="hero-eyebrow">
-        <span class="hero-eyebrow-dot" aria-hidden="true"></span>
-        <span>AI-Native Workspace</span>
-      </div>
-      <h1 class="hero-title">
-        一句话生成，即刻呈现所想
-      </h1>
-      <p class="hero-desc">输入自然语言需求，秒级构建交互式前端与独立全栈应用沙盒</p>
-
-      <div class="input-wrapper">
-        <a-textarea
-          v-model:value="prompt"
-          :placeholder="placeholderText"
-          :auto-size="{ minRows: 4, maxRows: 6 }"
-          class="prompt-input"
-          aria-label="输入应用生成提示词"
-          @pressEnter.prevent="handleAdd"
+  <div class="home">
+    <section class="page hero">
+      <div class="hero-main">
+        <h1 class="hero-title">
+          <span class="line">一句话，</span>
+          <span class="line">做出能<mark class="plate">上线</mark></span>
+          <span class="line">的网站。</span>
+        </h1>
+        <p class="hero-lead">
+          描述你想要的页面或应用，ZeroStack 会自动选择 HTML、多文件或 Vue 工程来实现。边生成边预览，满意了一键部署。
+        </p>
+        <PromptComposer
+          ref="composerRef"
+          v-model="prompt"
+          v-model:agent="useAgent"
+          :submitting="submitting"
+          :active-preset="activePreset"
+          @preset="applyPreset"
+          @submit="handleSubmit"
         />
-        <div class="input-actions">
-          <div class="input-tags" role="toolbar" aria-label="快捷生成模板">
-            <button
-              type="button"
-              class="tag-chip-btn"
-              @click="prompt = '帮我生成一个极简风格的个人博客网站，包含首页、文章列表页和文章详情页。首页需要展示最新的5篇文章和个人简介，整体色调以黑白灰为主，支持移动端自适应，排版要清晰舒适，符合现代审美。'"
-            >
-              极简个人博客
-            </button>
-            <button
-              type="button"
-              class="tag-chip-btn"
-              @click="prompt = '创建一个SaaS产品的企业官网，需要有吸引人的首屏，包含产品特性介绍、客户评价轮播图、详细的定价方案（分基础版、专业版、企业版），以及底部的联系我们表单。整体风格专业、现代、有科技感。'"
-            >
-              SaaS企业官网
-            </button>
-            <button
-              type="button"
-              class="tag-chip-btn"
-              @click="prompt = '开发一个电商后台管理系统的首页数据看板。需要包含今日营业额、新增用户数、订单总数等核心指标统计卡片，以及订单趋势折线图、商品分类占比饼图。界面设计需要专业现代，使用经典的侧边栏加顶部导航布局。'"
-            >
-              电商数据看板
-            </button>
-            <button
-              type="button"
-              class="tag-chip-btn"
-              @click="prompt = '设计一个暗黑模式的程序员社区交流页面。包含顶部导航栏（支持全局搜索和快捷发布）、左侧边栏（热门话题分类）、主体区域为动态列表（展示帖子标题、摘要、作者头像、点赞数和评论数），风格极客。'"
-            >
-              暗黑极客社区
-            </button>
-          </div>
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <AgentSwitch v-model:checked="useAgent" />
-            <a-button type="primary" shape="circle" size="large" class="submit-btn" aria-label="提交生成" :loading="submitting" @click="handleAdd">
-              <template #icon><ArrowUpOutlined aria-hidden="true" /></template>
-            </a-button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="content-section">
-      <!-- 我的作品 -->
-      <div v-if="userStore.loginUser?.id" class="list-container">
-        <h2 class="section-title">我的作品</h2>
-        <a-list
-          :grid="{ gutter: 24, column: 4, xs: 1, sm: 2, md: 3, lg: 4 }"
-          :data-source="myAppList"
-          :pagination="myAppTotal > pageSize ? {
-            current: myAppPage,
-            pageSize: pageSize,
-            total: myAppTotal,
-            onChange: handleMyPageChange
-          } : false"
-        >
-          <template #renderItem="{ item }">
-            <a-list-item>
-              <AppCard :app="item" />
-            </a-list-item>
-          </template>
-        </a-list>
       </div>
 
-      <!-- 精选案例 -->
-      <div class="list-container">
-        <h2 class="section-title">精选案例</h2>
-        <a-list
-          :grid="{ gutter: 24, column: 4, xs: 1, sm: 2, md: 3, lg: 4 }"
-          :data-source="goodAppList"
-          :pagination="goodAppTotal > pageSize ? {
-            current: goodAppPage,
-            pageSize: pageSize,
-            total: goodAppTotal,
-            onChange: handleGoodPageChange
-          } : false"
-        >
-          <template #renderItem="{ item }">
-            <a-list-item>
-              <AppCard :app="item" :showCreator="true" />
-            </a-list-item>
-          </template>
-        </a-list>
-      </div>
+      <ProofSheet class="hero-proof" :title="proofTitle" :layout="proofLayout" />
+    </section>
+
+    <RunStrip />
+
+    <div class="page shelves">
+      <AppShelf
+        v-if="isLoggedIn"
+        title="我的作品"
+        :apps="mine.list.value"
+        :total="mine.total.value"
+        :page="mine.page.value"
+        :page-size="mine.pageSize"
+        :loading="mine.loading.value"
+        :error="mine.error.value"
+        @page-change="mine.goTo"
+        @retry="mine.load"
+      >
+        <template #empty>
+          <div class="empty-mine">
+            <p class="empty-title">还没有作品。</p>
+            <p class="empty-desc">在上面写下第一句话，几分钟后它就是一个能打开的网站。</p>
+            <button type="button" class="btn btn--ink" @click="focusComposer">开始描述</button>
+          </div>
+        </template>
+      </AppShelf>
+
+      <AppShelf
+        title="精选作品"
+        show-author
+        :apps="featured.list.value"
+        :total="featured.total.value"
+        :page="featured.page.value"
+        :page-size="featured.pageSize"
+        :loading="featured.loading.value"
+        :error="featured.error.value"
+        @page-change="featured.goTo"
+        @retry="featured.load"
+      >
+        <template #empty>
+          <p class="empty-quiet">暂时还没有精选作品。管理员挑选出的优秀作品会出现在这里。</p>
+        </template>
+      </AppShelf>
     </div>
   </div>
 </template>
 
 <style scoped>
-.home-container {
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
+  gap: clamp(40px, 6vw, 88px);
+  align-items: start;
+  min-height: calc(100svh - var(--header-h));
+  padding-top: clamp(28px, 3.6vw, 44px);
+  padding-bottom: 48px;
+}
+
+.hero-main {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 40px 0 60px;
-  width: 100%;
-}
-
-.hero-section {
-  text-align: center;
-  width: 100%;
-  max-width: 860px;
-  margin-top: 10px;
-  margin-bottom: 52px;
-}
-
-.hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
-  border-radius: 9999px;
-  background: rgba(238, 242, 255, 0.75);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(199, 210, 254, 0.8);
-  color: #4f46e5;
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 24px;
-  box-shadow: 0 2px 10px rgba(99, 102, 241, 0.12);
-}
-
-.hero-eyebrow-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #6366f1;
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+  min-width: 0;
 }
 
 .hero-title {
-  font-size: 42px;
-  font-weight: 800;
-  letter-spacing: -1.2px;
-  margin-bottom: 14px;
-  line-height: 1.2;
-  text-wrap: balance;
-  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 55%, #4f46e5 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero-desc {
-  font-size: 16px;
-  color: #64748b;
-  margin-bottom: 36px;
-}
-
-.input-wrapper {
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border-radius: 20px;
-  padding: 20px 22px;
-  box-shadow: 0 16px 40px -8px rgba(31, 38, 135, 0.08), inset 0 1px 1px rgba(255, 255, 255, 0.95);
-  position: relative;
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease, background-color 0.25s ease;
-}
-
-.input-wrapper:hover,
-.input-wrapper:focus-within {
-  background: rgba(255, 255, 255, 0.92) !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 20px 48px -4px rgba(99, 102, 241, 0.18), inset 0 1px 1px rgba(255, 255, 255, 1);
-  border-color: rgba(99, 102, 241, 0.4);
-  transform: translateY(-1px);
-}
-
-.prompt-input {
-  border: none !important;
-  box-shadow: none !important;
-  font-size: 15px;
-  resize: none;
-  background: transparent;
-  color: #0f172a;
-}
-
-.prompt-input:focus {
-  outline: none;
-}
-
-.input-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px solid rgba(226, 232, 240, 0.6);
-}
-
-.input-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.input-tags .tag-chip-btn {
-  border-radius: 9999px;
-  padding: 4px 14px;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-  color: #475569;
-  font-size: 12px;
-  font-weight: 500;
-  font-family: inherit;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
-  outline: none;
-}
-
-.input-tags .tag-chip-btn:hover {
-  background: rgba(238, 242, 255, 0.9);
-  border-color: #a5b4fc;
-  color: #4f46e5;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
-  transform: translateY(-0.5px);
-}
-
-.input-tags .tag-chip-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1;
-}
-
-.submit-btn {
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%) !important;
-  border: none !important;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease !important;
-}
-
-.submit-btn:hover {
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.6) !important;
-  transform: translateY(-1px);
-  filter: brightness(1.04);
-}
-
-.submit-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1 !important;
-}
-
-.content-section {
-  width: 100%;
-  max-width: 1200px;
   display: flex;
   flex-direction: column;
-  gap: 36px;
+  font-size: clamp(48px, 6.4vw, 92px);
+  line-height: 1.02;
+  letter-spacing: 0.01em;
 }
 
-.section-title {
-  font-size: 20px;
-  font-weight: 600;
-  color: #0f172a;
-  margin-bottom: 20px;
-  letter-spacing: -0.3px;
+.plate {
+  position: relative;
+  isolation: isolate;
+  padding: 0;
+  background: none;
+  color: inherit;
 }
 
-.list-container {
-  width: 100%;
+.plate::after {
+  content: '';
+  position: absolute;
+  left: -0.06em;
+  right: -0.08em;
+  bottom: 0.06em;
+  height: 0.46em;
+  z-index: -1;
+  background: var(--yellow);
+  mix-blend-mode: multiply;
+  animation: plate-in 900ms var(--ease-out) 200ms both;
+}
+
+@keyframes plate-in {
+  from {
+    transform: translate(0.12em, 0.1em);
+    opacity: 0;
+  }
+}
+
+.hero-lead {
+  max-width: 36em;
+  margin: 18px 0 22px;
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--ink-2);
+}
+
+.hero-proof {
+  margin-top: 12px;
+}
+
+.shelves {
+  display: flex;
+  flex-direction: column;
+  gap: 96px;
+  padding-top: 96px;
+}
+
+.empty-mine {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 40px clamp(24px, 4vw, 48px);
+  border-radius: var(--radius);
+  background: var(--yellow);
+}
+
+.empty-title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: 1.1;
+}
+
+.empty-desc {
+  margin-bottom: 10px;
+  color: var(--ink-2);
+}
+
+.empty-quiet {
+  padding: 28px 0;
+  color: var(--ink-3);
+}
+
+@media (max-width: 1080px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  .hero-proof {
+    max-width: 440px;
+    margin: 24px auto 0;
+    width: 100%;
+  }
 }
 </style>
-
-

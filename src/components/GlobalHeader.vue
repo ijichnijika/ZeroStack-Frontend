@@ -1,283 +1,270 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
-import { useUserStore } from '@/stores/user'
 import { message } from 'ant-design-vue'
 import { UserOutlined, SettingOutlined, LogoutOutlined, DownOutlined } from '@ant-design/icons-vue'
+import { useUserStore } from '@/stores/user'
+import BrandMark from '@/components/BrandMark.vue'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
 
-/**
- * 用户下拉菜单的 key 常量
- * 之所以提取：key 字符串同时出现在 handleDropdownClick switch 判断与模板
- * menu-item key 属性中，若直接使用字面量，修改时需要同步两处且极易遗漏。
- */
-const USER_MENU_KEY = {
-  PROFILE: 'profile',
-  SETTINGS: 'settings',
-  LOGOUT: 'logout',
-} as const
-
-const handleMenuClick = ({ key }: { key: string }) => {
-  router.push(key)
-}
+const isAdmin = computed(() => userStore.loginUser?.userRole === 'admin')
 
 const menuItems = computed(() => {
-  // 寻找到根布局路由下的子路由，如果没配置嵌套则默认使用顶级路由
   const baseRoute = router.options.routes.find((r) => r.path === '/')
-  const routesToRender = baseRoute?.children ? baseRoute.children.map(child => ({
-    ...child,
-    // 将相对子路径转换为绝对路径
-    path: child.path.startsWith('/') ? child.path : `/${child.path}`
-  })) : router.options.routes
-
-  return routesToRender
-    .filter((r) => {
-      // 过滤需要隐藏的菜单
-      if (r.meta?.hideInMenu) {
-        return false
-      }
-      // 过滤非管理员不可见菜单
-      if (r.meta?.needAdmin && userStore.loginUser?.userRole !== 'admin') {
-        return false
-      }
-      return true
-    })
+  const children = baseRoute?.children ?? []
+  return children
+    .filter((r) => !r.meta?.hideInMenu && (!r.meta?.needAdmin || isAdmin.value))
     .map((r) => ({
-      key: r.path,
-      label: (r.meta?.title as string) || r.name || '页面',
+      path: r.path ? `/${r.path}` : '/',
+      label: (r.meta?.title as string) || String(r.name),
     }))
 })
 
-const selectedKeys = ref<string[]>([route.path])
-
-watch(
-  () => route.path,
-  (newPath) => {
-    selectedKeys.value = [newPath]
-  },
+const displayName = computed(
+  () => userStore.loginUser.userName || userStore.loginUser.userAccount || '未命名用户',
 )
 
-const handleDropdownClick = async ({ key }: { key: string }) => {
-  if (key === USER_MENU_KEY.PROFILE) {
-    router.push('/user/profile')
-  } else if (key === USER_MENU_KEY.SETTINGS) {
-    router.push('/user/settings')
-  } else if (key === USER_MENU_KEY.LOGOUT) {
+const handleMenuClick = async ({ key }: { key: string | number }) => {
+  if (key === 'logout') {
     try {
       await userStore.logout()
-      message.success('退出登录成功')
+      message.success('已退出登录')
       router.push('/user/login')
-    } catch (e) {
-      message.error('退出登录失败')
+    } catch {
+      message.error('退出登录失败，请稍后重试')
     }
+    return
   }
+  router.push(String(key))
 }
 </script>
 
 <template>
-  <div class="global-header">
-    <router-link to="/" class="header-left" aria-label="ZeroStack 首页">
-      <img src="@/assets/logo.png" alt="ZeroStack Logo" class="logo" width="32" height="32" />
-      <span class="title">ZeroStack</span>
-    </router-link>
+  <header class="site-header">
+    <div class="page header-inner">
+      <router-link to="/" class="brand" aria-label="ZeroStack 首页">
+        <BrandMark :size="30" />
+        <span class="brand-word">ZeroStack</span>
+      </router-link>
 
-    <div class="header-center">
-      <a-menu
-        v-model:selectedKeys="selectedKeys"
-        mode="horizontal"
-        :items="menuItems"
-        @click="handleMenuClick"
-        :style="{ lineHeight: '60px', borderBottom: 'none', width: '100%', background: 'transparent' }"
-      />
-    </div>
+      <nav class="site-nav" aria-label="主导航">
+        <router-link
+          v-for="item in menuItems"
+          :key="item.path"
+          :to="item.path"
+          class="nav-link"
+          :class="{ 'is-active': route.path === item.path }"
+        >
+          {{ item.label }}
+        </router-link>
+      </nav>
 
-    <div class="header-right">
-      <!-- 已登录展示用户信息 -->
-      <template v-if="userStore.loginUser?.id">
-        <a-dropdown placement="bottomRight" :trigger="['click']">
-          <div
-            class="user-profile-trigger"
-            role="button"
-            tabindex="0"
-            :aria-label="`用户菜单: ${userStore.loginUser.userName || userStore.loginUser.userAccount}`"
-            @keydown.enter.prevent="($event.currentTarget as HTMLElement)?.click()"
-            @keydown.space.prevent="($event.currentTarget as HTMLElement)?.click()"
-          >
-            <a-avatar
-              :src="userStore.loginUser.userAvatar"
-              style="background-color: #4f46e5;"
-            >
-              <template #icon><UserOutlined aria-hidden="true" /></template>
+      <div class="header-right">
+        <a-dropdown v-if="userStore.loginUser?.id" placement="bottomRight" :trigger="['click']">
+          <button type="button" class="user-chip" :aria-label="`用户菜单：${displayName}`">
+            <a-avatar :size="28" :src="userStore.loginUser.userAvatar" class="user-avatar">
+              <template #icon><UserOutlined /></template>
             </a-avatar>
-            <span class="username">{{ userStore.loginUser.userName || userStore.loginUser.userAccount }}</span>
-            <DownOutlined class="arrow-icon" aria-hidden="true" />
-          </div>
+            <span class="user-name">{{ displayName }}</span>
+            <DownOutlined class="user-caret" aria-hidden="true" />
+          </button>
           <template #overlay>
-            <a-menu @click="handleDropdownClick" class="glass-dropdown">
-              <a-menu-item :key="USER_MENU_KEY.PROFILE">
-                <template #icon><UserOutlined aria-hidden="true" /></template>
+            <a-menu @click="handleMenuClick">
+              <a-menu-item key="/user/profile">
+                <template #icon><UserOutlined /></template>
                 个人中心
               </a-menu-item>
-              <a-menu-item :key="USER_MENU_KEY.SETTINGS">
-                <template #icon><SettingOutlined aria-hidden="true" /></template>
+              <a-menu-item key="/user/settings">
+                <template #icon><SettingOutlined /></template>
                 个人设置
               </a-menu-item>
+              <template v-if="isAdmin">
+                <a-menu-divider class="mobile-only-divider" />
+                <a-menu-item
+                  v-for="item in menuItems.filter((i) => i.path !== '/')"
+                  :key="item.path"
+                  class="mobile-only-item"
+                >
+                  {{ item.label }}
+                </a-menu-item>
+              </template>
               <a-menu-divider />
-              <a-menu-item :key="USER_MENU_KEY.LOGOUT">
-                <template #icon><LogoutOutlined aria-hidden="true" /></template>
+              <a-menu-item key="logout" danger>
+                <template #icon><LogoutOutlined /></template>
                 退出登录
               </a-menu-item>
             </a-menu>
           </template>
         </a-dropdown>
-      </template>
-      <template v-else>
-        <a-button type="primary" @click="router.push('/user/login')" class="primary-animated-btn header-btn-size">
-          登录
-        </a-button>
-      </template>
+
+        <template v-else>
+          <router-link to="/user/register" class="btn btn--quiet btn--sm register-link">注册</router-link>
+          <router-link to="/user/login" class="btn btn--ink btn--sm">登录</router-link>
+        </template>
+      </div>
     </div>
-  </div>
+  </header>
 </template>
 
 <style scoped>
-.global-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 60px;
-  padding: 0 32px;
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(18px) saturate(180%);
-  -webkit-backdrop-filter: blur(18px) saturate(180%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 20px -2px rgba(31, 38, 135, 0.05);
-  user-select: none;
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
 }
 
-.header-left {
+.header-inner {
   display: flex;
   align-items: center;
-  cursor: pointer;
-  margin-right: 32px;
-  flex-shrink: 0;
+  gap: 40px;
+  height: var(--header-h);
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
   text-decoration: none;
-  border-radius: 8px;
 }
 
-.header-left:focus-visible {
-  outline: 2px solid #4f46e5;
-  outline-offset: 4px;
+.brand:hover {
+  text-decoration: none;
 }
 
-.logo {
-  height: 32px;
-  width: auto;
-  margin-right: 10px;
-  border-radius: 8px;
-  transition: transform 0.25s ease;
+.brand-word {
+  font-family: var(--font-wide);
+  font-stretch: 125%;
+  font-weight: 850;
+  font-size: 19px;
+  letter-spacing: -0.02em;
+  line-height: 1;
 }
 
-.header-left:hover .logo {
-  transform: scale(1.06);
-}
-
-.title {
-  font-size: 18px;
-  font-weight: 700;
-  color: #0f172a;
-  white-space: nowrap;
-  letter-spacing: -0.3px;
-  background: linear-gradient(135deg, #0f172a 0%, #4338ca 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.header-center {
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   flex: 1;
-  min-width: 0;
 }
 
-:deep(.ant-menu) {
-  border-bottom: none !important;
+.nav-link {
+  position: relative;
+  isolation: isolate;
+  padding: 8px 12px;
+  color: var(--ink-2);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: color var(--t-fast) var(--ease-out);
 }
 
-:deep(.ant-menu-item) {
-  font-size: 14px !important;
-  font-weight: 500 !important;
-  color: #475569 !important;
-  transition: color 0.2s ease, background-color 0.2s ease !important;
-  margin: 0 6px !important;
-  border-radius: 8px !important;
+.nav-link::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  bottom: 4px;
+  height: 9px;
+  z-index: -1;
+  background: var(--yellow);
+  mix-blend-mode: multiply;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 360ms var(--ease-out);
 }
 
-:deep(.ant-menu-item:hover) {
-  color: #4f46e5 !important;
-  background: rgba(99, 102, 241, 0.08) !important;
+.nav-link:hover {
+  color: var(--ink);
+  text-decoration: none;
 }
 
-:deep(.ant-menu-item-selected) {
-  color: #4f46e5 !important;
-  background: rgba(99, 102, 241, 0.1) !important;
-  font-weight: 600 !important;
+.nav-link.is-active {
+  color: var(--ink);
 }
 
-:deep(.ant-menu-item-selected::after) {
-  display: none !important;
+.nav-link.is-active::after {
+  transform: scaleX(1);
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  margin-left: 24px;
-  flex-shrink: 0;
+  gap: 6px;
+  margin-left: auto;
 }
 
-.user-profile-trigger {
-  display: flex;
+.user-chip {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  height: 38px;
+  padding: 0 12px 0 5px;
+  border: 1.5px solid var(--rule);
+  border-radius: var(--pill);
+  background: var(--sheet);
   cursor: pointer;
-  padding: 4px 14px 4px 4px;
-  border-radius: 9999px;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-  line-height: normal;
-  transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color var(--t-fast) var(--ease-out);
 }
 
-.user-profile-trigger:hover {
-  background: rgba(255, 255, 255, 0.9);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.12);
-  transform: translateY(-0.5px);
+.user-chip:hover {
+  border-color: var(--ink);
 }
 
-.user-profile-trigger:focus-visible {
-  outline: 2px solid #4f46e5;
-  outline-offset: 2px;
+.user-avatar {
+  background: var(--pink);
+  color: var(--ink);
 }
 
-.username {
-  font-size: 14px;
-  color: #0f172a;
+.user-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.arrow-icon {
+.user-caret {
   font-size: 10px;
-  color: #64748b;
+  color: var(--ink-3);
 }
 
-.header-btn-size {
-  height: 36px !important;
-  padding: 0 22px !important;
-  font-size: 14px !important;
-  border-radius: 9999px !important;
+:global(.mobile-only-item),
+:global(.mobile-only-divider) {
+  display: none !important;
+}
+
+@media (max-width: 760px) {
+  .header-inner {
+    gap: 16px;
+  }
+
+  .site-nav {
+    display: none;
+  }
+
+  .user-name,
+  .register-link {
+    display: none;
+  }
+
+  .user-chip {
+    padding-right: 10px;
+  }
+
+  :global(.mobile-only-item) {
+    display: flex !important;
+  }
+
+  :global(.mobile-only-divider) {
+    display: block !important;
+  }
 }
 </style>
-

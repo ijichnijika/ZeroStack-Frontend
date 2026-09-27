@@ -1,88 +1,34 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import GlobalHeader from '@/components/GlobalHeader.vue'
 import GlobalFooter from '@/components/GlobalFooter.vue'
+
+const route = useRoute()
+const compactFooter = computed(() => route.path !== '/')
 </script>
 
 <template>
-  <div id="basic-layout">
-    <a href="#main-content" class="sr-only">跳至主要内容</a>
-    <a-layout class="layout-container">
-      <a-layout-header
-        class="layout-header"
-        style="height: 60px; line-height: 60px; background: transparent; padding: 0"
-      >
-        <GlobalHeader />
-      </a-layout-header>
-      <a-layout-content class="layout-content">
-        <main id="main-content" class="content-wrapper glass-effect">
-          <router-view />
-        </main>
-      </a-layout-content>
-      <a-layout-footer class="layout-footer">
-        <GlobalFooter />
-      </a-layout-footer>
-    </a-layout>
+  <div class="basic-layout">
+    <a href="#main-content" class="sr-only skip-link">跳至主要内容</a>
+    <GlobalHeader />
+    <main id="main-content" class="layout-main">
+      <router-view />
+    </main>
+    <GlobalFooter :compact="compactFooter" />
   </div>
 </template>
 
 <style scoped>
-#basic-layout {
+.basic-layout {
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
-  display: flex;
-  flex-direction: column;
+  overflow-x: clip;
 }
 
-.layout-container {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: transparent;
-}
-
-.layout-header {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  width: 100%;
-  padding: 0;
-  height: 60px;
-  line-height: 60px;
-  background: transparent;
-}
-
-.layout-content {
+.layout-main {
   flex: 1;
-  padding: 24px;
-  display: flex;
-  flex-direction: column;
-  overflow-x: hidden;
-}
-
-.content-wrapper {
-  padding: 32px;
-  border-radius: 20px;
-  flex: 1;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto;
-  box-sizing: border-box;
-  scroll-margin-top: 60px;
-}
-
-.layout-footer {
-  padding: 0;
-  background: transparent;
-}
-
-/* 响应式设计适配手机等小屏设备 */
-@media (max-width: 768px) {
-  .layout-content {
-    padding: 12px;
-  }
-
-  .content-wrapper {
-    padding: 18px;
-    border-radius: 14px;
-  }
+  scroll-margin-top: var(--header-h);
 }
 </style>

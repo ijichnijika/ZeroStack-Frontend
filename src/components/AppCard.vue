@@ -1,298 +1,169 @@
 <script setup lang="ts">
-import { getDeployUrl } from '@/config/env'
-import { useRouter } from 'vue-router'
-import { MessageOutlined, GlobalOutlined, ClockCircleOutlined, UserOutlined } from '@ant-design/icons-vue'
+import { computed } from 'vue'
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import 'dayjs/locale/zh-cn'
+import { getCodeGenTypeConfig } from '@/enums/codeGenType'
 
 dayjs.extend(relativeTime)
-dayjs.locale('zh-cn')
 
-defineProps({
-  app: {
-    type: Object as () => API.AppVO,
-    required: true
-  },
-  showCreator: {
-    type: Boolean,
-    default: false
-  }
-})
+const props = withDefaults(
+  defineProps<{
+    app: API.AppVO
+    /** 封面单色印刷使用的专色 */
+    ink?: 'pink' | 'blue'
+    showAuthor?: boolean
+  }>(),
+  { ink: 'blue', showAuthor: false },
+)
 
-const router = useRouter()
-
-const goChat = (appId?: number) => {
-  if (appId == null) return
-  router.push(`/app/chat/${appId}?view=1`)
-}
-
-const openPreview = (deployKey: string) => {
-  window.open(getDeployUrl(deployKey), '_blank')
-}
+const typeConfig = computed(() => getCodeGenTypeConfig(props.app.codeGenType))
+const initial = computed(() => (props.app.appName || '未').trim().charAt(0))
+const timeText = computed(() => (props.app.createTime ? dayjs(props.app.createTime).fromNow() : ''))
+const author = computed(() => props.app.user?.userName || props.app.user?.userAccount || '匿名')
 </script>
 
 <template>
-  <a-card
-    hoverable
-    class="app-card"
-    tabindex="0"
-    role="region"
-    :aria-label="app.appName || '应用卡片'"
-    @click="goChat(app.id)"
-    @keydown.enter.self="goChat(app.id)"
-  >
-    <template #cover>
-      <div class="card-cover">
-        <img v-if="app.cover" :src="app.cover" :alt="app.appName || '应用封面'" width="100%" height="150" loading="lazy" />
-        <!-- 默认封面骨架 -->
-        <div v-else class="default-cover">
-          <div class="code-skeleton">
-            <div class="code-skeleton-header">
-              <span class="code-dot dot-red" aria-hidden="true"></span>
-              <span class="code-dot dot-yellow" aria-hidden="true"></span>
-              <span class="code-dot dot-green" aria-hidden="true"></span>
-              <span class="code-file-title">{{ app.appName || 'App' }}</span>
-            </div>
-            <div class="code-skeleton-body">
-              <div class="code-line w-80"></div>
-              <div class="code-line w-55"></div>
-              <div class="code-line w-90"></div>
-              <div class="code-line w-65"></div>
-            </div>
-          </div>
-          <div class="app-badge-node" aria-hidden="true">{{ app.appName?.charAt(0) || 'Z' }}</div>
-        </div>
-
-        <div class="cover-overlay">
-          <a-button type="primary" class="card-action-btn" @click.stop="goChat(app.id)">
-            <template #icon><MessageOutlined aria-hidden="true" /></template>
-            查看对话
-          </a-button>
-          <a-button v-if="app.deployKey" class="card-action-btn secondary" @click.stop="openPreview(app.deployKey)">
-            <template #icon><GlobalOutlined aria-hidden="true" /></template>
-            访问站点
-          </a-button>
-        </div>
+  <router-link :to="`/app/chat/${app.id}?view=1`" class="app-card" :class="`ink-${ink}`">
+    <div class="cover">
+      <img v-if="app.cover" :src="app.cover" :alt="`${app.appName || '应用'}的页面截图`" loading="lazy" />
+      <div v-else class="cover-empty halftone" aria-hidden="true">
+        <span class="cover-initial">{{ initial }}</span>
       </div>
-    </template>
-    <a-card-meta :title="app.appName || '未命名应用'">
-      <template #description>
-        <div class="card-desc">
-          <!-- 显示精选应用和作者信息 -->
-          <template v-if="showCreator">
-            <div class="author-info">
-              <a-avatar size="small" :src="app.user?.userAvatar">
-                <template #icon><UserOutlined aria-hidden="true" /></template>
-              </a-avatar>
-              <span class="author-name">{{ app.user?.userName || app.user?.userAccount }}</span>
-            </div>
-            <a-tag :bordered="false" class="app-tag">精选应用</a-tag>
-          </template>
-          <!-- 仅显示我的应用创建时间 -->
-          <template v-else>
-            <span><ClockCircleOutlined aria-hidden="true" /> 创建于 {{ dayjs(app.createTime).fromNow() }}</span>
-          </template>
-        </div>
-      </template>
-    </a-card-meta>
-  </a-card>
+    </div>
+    <div class="card-body">
+      <h3 class="card-title">{{ app.appName || '未命名应用' }}</h3>
+      <p class="card-meta">
+        <span v-if="typeConfig" class="tag" :class="`tag--${typeConfig.ink}`">{{ typeConfig.label }}</span>
+        <span v-if="showAuthor" class="meta-text">{{ author }}</span>
+        <span v-if="timeText" class="meta-text">{{ timeText }}</span>
+      </p>
+    </div>
+  </router-link>
 </template>
 
 <style scoped>
 .app-card {
-  border-radius: 16px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(16px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(16px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85);
-  box-shadow: 0 4px 20px -2px rgba(31, 38, 135, 0.06), inset 0 1px 1px rgba(255, 255, 255, 0.95);
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, border-color 0.25s ease;
-  outline: none;
-}
-
-.app-card:hover,
-.app-card:focus-visible {
-  transform: translateY(-3px);
-  border-color: rgba(99, 102, 241, 0.4);
-  box-shadow: 0 16px 36px -4px rgba(99, 102, 241, 0.16), 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.app-card:focus-visible {
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1, 0 16px 36px -4px rgba(99, 102, 241, 0.16);
-}
-
-.card-cover {
-  height: 150px;
-  background: #0f172a;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  position: relative;
-}
-
-.cover-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(6px);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  opacity: 0;
-  transition: opacity 0.25s ease;
+  gap: 14px;
+  color: var(--ink);
+  text-decoration: none;
+  border-radius: var(--radius);
 }
 
-.app-card:hover .cover-overlay,
-.app-card:focus-within .cover-overlay {
-  opacity: 1;
+.app-card:hover {
+  text-decoration: none;
 }
 
-.card-action-btn {
-  border-radius: 9999px !important;
-  font-size: 13px;
-  height: 34px;
-  padding: 0 18px;
-  min-width: 110px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+.app-card:focus-visible {
+  outline-offset: 6px;
 }
 
-.card-action-btn.secondary {
-  background: rgba(255, 255, 255, 0.2);
-  backdrop-filter: blur(8px);
-  color: #ffffff;
-  border: 1px solid rgba(255, 255, 255, 0.35);
+/* 封面：有封面展示原图，无封面时展示 Riso 专色首字母底板 */
+.cover {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
 }
 
-.card-action-btn.secondary:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.6);
-}
-
-.card-cover img {
+.cover img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top center;
+  transition: transform 720ms var(--ease-out);
 }
 
-/* 默认封面骨架 */
-.default-cover {
+.app-card:hover .cover img,
+.app-card:focus-visible .cover img {
+  transform: scale(1.03);
+}
+
+.cover-empty {
+  display: grid;
+  place-items: center;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-  padding: 14px;
-  display: flex;
-  position: relative;
-  overflow: hidden;
+  background: var(--blue);
+  color: rgba(255, 255, 255, 0.35);
 }
 
-.code-skeleton {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  opacity: 0.85;
+.ink-pink .cover-empty {
+  background: var(--pink);
+  color: rgba(23, 23, 26, 0.18);
 }
 
-.code-skeleton-header {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+.cover-initial {
+  font-family: var(--font-display);
+  font-size: 88px;
+  line-height: 1;
+  color: #fff;
+  transition: transform var(--t-register) var(--ease-out);
 }
 
-.code-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
+.ink-pink .cover-initial {
+  color: var(--ink);
 }
 
-.dot-red { background: #ef4444; }
-.dot-yellow { background: #f59e0b; }
-.dot-green { background: #10b981; }
-
-.code-file-title {
-  margin-left: 6px;
-  font-size: 11px;
-  font-family: monospace;
-  color: #94a3b8;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
+.app-card:hover .cover-initial {
+  transform: scale(1.08) rotate(-4deg);
 }
 
-.code-skeleton-body {
+.card-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0;
 }
 
-.code-line {
-  height: 6px;
-  border-radius: 3px;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.w-80 { width: 80%; }
-.w-55 { width: 55%; }
-.w-90 { width: 90%; }
-.w-65 { width: 65%; }
-
-.app-badge-node {
-  position: absolute;
-  right: 14px;
-  bottom: 12px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: rgba(79, 70, 229, 0.3);
-  border: 1px solid rgba(99, 102, 241, 0.4);
-  color: #ffffff;
-  font-size: 15px;
+.card-title {
+  position: relative;
+  isolation: isolate;
+  align-self: flex-start;
+  max-width: 100%;
+  font-family: var(--font-body);
+  font-size: 17px;
   font-weight: 700;
+  line-height: 1.35;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.card-title::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1px;
+  height: 8px;
+  z-index: -1;
+  background: var(--yellow);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 380ms var(--ease-out);
+}
+
+.app-card:hover .card-title::after {
+  transform: scaleX(1);
+}
+
+.card-meta {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 10px;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--ink-3);
 }
 
-.card-desc {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 10px;
-  font-size: 12px;
-  color: #64748b;
-}
-
-.author-info {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.author-name {
-  color: #334155;
-  font-weight: 500;
-}
-
-.app-tag {
-  border-radius: 4px;
-  margin: 0;
-  padding: 1px 8px;
-  font-size: 11px;
-  font-weight: 500;
-  line-height: 18px;
-  background: #eef2ff !important;
-  color: #4f46e5 !important;
-  border: 1px solid #c7d2fe !important;
+.meta-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>

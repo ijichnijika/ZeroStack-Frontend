@@ -7,23 +7,34 @@ export enum CodeGenTypeEnum {
   VUE_PROJECT = 'vue_project',
 }
 
+export type InkName = 'pink' | 'blue' | 'yellow'
+
 /**
  * 代码生成类型配置
+ * color 供 antd Tag 使用，ink 为站内专色
  */
 export const CODE_GEN_TYPE_CONFIG = {
   [CodeGenTypeEnum.HTML]: {
-    label: '原生 HTML 模式',
+    label: 'HTML 单页',
     value: CodeGenTypeEnum.HTML,
-    color: 'orange',
+    color: 'magenta',
+    ink: 'pink' as InkName,
   },
   [CodeGenTypeEnum.MULTI_FILE]: {
-    label: '原生多文件模式',
+    label: '多文件站点',
     value: CodeGenTypeEnum.MULTI_FILE,
-    color: 'cyan',
+    color: 'blue',
+    ink: 'blue' as InkName,
   },
   [CodeGenTypeEnum.VUE_PROJECT]: {
-    label: 'Vue 项目模式',
+    label: 'Vue 工程',
     value: CodeGenTypeEnum.VUE_PROJECT,
-    color: 'green',
+    color: 'gold',
+    ink: 'yellow' as InkName,
   },
+}
+
+export function getCodeGenTypeConfig(type?: string) {
+  if (!type) return undefined
+  return CODE_GEN_TYPE_CONFIG[type as CodeGenTypeEnum]
 }

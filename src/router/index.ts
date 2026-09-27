@@ -119,11 +119,9 @@ const router = createRouter({
   ],
 })
 
-// 路由守卫：登录拦截与角色权限验证
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to) => {
   const userStore = useUserStore()
-  
-  // 如果尚未尝试获取用户信息，则先尝试拉取一次
+
   if (userStore.loginUser && !userStore.loginUser.id) {
     await userStore.fetchLoginUser()
   }
@@ -131,22 +129,21 @@ router.beforeEach(async (to, from, next) => {
   const { needAdmin, needLogin } = to.meta
   const { loginUser } = userStore
 
-  // 如果访问的目标路由需要管理员权限或需要登录
   if (needAdmin || needLogin) {
     if (!loginUser.id) {
-      // 未登录，拦截并跳转到登录页面
       message.warning('请先登录后访问')
-      next(`/user/login?redirect=${encodeURIComponent(to.fullPath)}`)
-      return
+      return `/user/login?redirect=${encodeURIComponent(to.fullPath)}`
     }
     if (needAdmin && loginUser.userRole !== 'admin') {
-      // 已登录但不是管理员
       message.error('权限不足，仅管理员可访问')
-      next('/')
-      return
+      return '/'
     }
   }
-  next()
+})
+
+router.afterEach((to) => {
+  const title = to.meta?.title as string | undefined
+  document.title = title && to.name !== 'home' ? `${title} · ZeroStack` : 'ZeroStack · 一句话做出能上线的网站'
 })
 
 export default router

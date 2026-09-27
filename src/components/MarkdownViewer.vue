@@ -1,53 +1,101 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted } from 'vue'
 import { Marked } from 'marked'
 import { markedHighlight } from 'marked-highlight'
 import hljs from 'highlight.js'
-import 'highlight.js/styles/atom-one-dark.css'
 
-const props = defineProps({
-  content: {
-    type: String,
-    required: true
-  }
-})
+const props = defineProps<{
+  content: string
+}>()
 
 const markedInstance = new Marked(
   markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang) {
-      let language = lang
-      if (language === 'vue') {
-        language = 'html'
-      }
-      language = hljs.getLanguage(language) ? language : 'plaintext'
-      return hljs.highlight(code, { language }).value
-    }
-  })
+      const language = lang === 'vue' ? 'html' : lang
+      return hljs.highlight(code, { language: hljs.getLanguage(language) ? language : 'plaintext' })
+        .value
+    },
+  }),
 )
 
-const parsedHtml = ref('')
+const svg = (body: string, cls = '') =>
+  `<svg class="${cls}" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`
 
+const ICONS = {
+  write: svg('<path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>'),
+  remove: svg(
+    '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  ),
+  read: svg('<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>'),
+  folder: svg(
+    '<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>',
+  ),
+  ok: svg('<circle cx="12" cy="12" r="10"/><polyline points="8.5 12 11 14.5 15.5 9.5"/>', 'is-ok'),
+  fail: svg(
+    '<circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>',
+    'is-fail',
+  ),
+  star: svg(
+    '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+    'is-star',
+  ),
+  spin: svg(
+    '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+    'spin-icon',
+  ),
+}
+
+const TOOL_ICON: Record<string, string> = {
+  写入文件: ICONS.write,
+  文件写入: ICONS.write,
+  创建文件: ICONS.write,
+  修改文件: ICONS.write,
+  文件修改: ICONS.write,
+  删除文件: ICONS.remove,
+  文件删除: ICONS.remove,
+  读取文件: ICONS.read,
+  文件读取: ICONS.read,
+  读取目录: ICONS.folder,
+  目录读取: ICONS.folder,
+  退出工具调用: ICONS.ok,
+  退出: ICONS.ok,
+  exit: ICONS.ok,
+  执行结束: ICONS.ok,
+}
+
+const STATUS_ICON: Record<string, string> = {
+  '🚀': ICONS.spin,
+  '✅': ICONS.ok,
+  '❌': ICONS.fail,
+  '🎉': ICONS.star,
+}
+
+const row = (icon: string, main: string, sub = '', cls = '') =>
+  `\n<div class="tool-call-row ${cls}"><span class="tool-icon">${icon}</span><span class="tool-maintext">${main}</span>${
+    sub ? `<span class="tool-subtext">${sub}</span>` : ''
+  }</div>\n`
+
+/**
+ * 把后端流里的工具调用标记转换成状态行：
+ * [选择工具] 与 [工具调用] 成对抵消，未匹配的视为仍在执行。
+ */
 const processContent = (text: string) => {
   const executedCounts: Record<string, number> = {}
   const executedRegex = /\[工具调用\]\s*([^\s]+)/g
   let match
   while ((match = executedRegex.exec(text)) !== null) {
     const action = match[1]
-    if (action) {
-      executedCounts[action] = (executedCounts[action] || 0) + 1
+    if (action) executedCounts[action] = (executedCounts[action] || 0) + 1
+  }
+
+  if (/\[执行结束\]/.test(text)) {
+    for (const key of ['exit', '退出工具调用', '退出', '执行结束']) {
+      executedCounts[key] = (executedCounts[key] || 0) + 1
     }
   }
 
-  // 如果包含 [执行结束]，把 exit / 退出工具调用等相关计数值抵消，防止显示未完成
-  if (/\[执行结束\]/.test(text)) {
-    executedCounts['exit'] = (executedCounts['exit'] || 0) + 1
-    executedCounts['退出工具调用'] = (executedCounts['退出工具调用'] || 0) + 1
-    executedCounts['退出'] = (executedCounts['退出'] || 0) + 1
-    executedCounts['执行结束'] = (executedCounts['执行结束'] || 0) + 1
-  }
-
-  let result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (fullMatch, action) => {
+  let result = text.replace(/(?:\n\n)?\[选择工具\]\s*([^\s]+)[ \t]*(?:\n\n)?/g, (_m, action) => {
     if (action && (executedCounts[action] || 0) > 0) {
       executedCounts[action] = (executedCounts[action] || 0) - 1
       return '\n\n'
@@ -55,122 +103,54 @@ const processContent = (text: string) => {
     return `\n\n[未完成的工具] ${action}\n\n`
   })
 
-  // 处理 [执行结束] 转换为 UI 卡片
-  result = result.replace(/\[执行结束\]/g, () => {
-    return `\n<div class="tool-call-row finish-step">
-      <span class="tool-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11.5 14.5 15 9.5"></polyline></svg></span>
-      <span class="tool-maintext">执行结束</span>
-    </div>\n`
-  })
+  result = result.replace(/\[执行结束\]/g, () => row(ICONS.ok, '执行结束', '', 'is-finish'))
 
-  result = result.replace(/\[(?:工具调用|未完成的工具)\]\s*(.*?)(?=\n|$)/g, (match, action) => {
+  result = result.replace(/\[(?:工具调用|未完成的工具)\]\s*(.*?)(?=\n|$)/g, (full, action) => {
     const parts = action.trim().split(/\s+/)
     const actionName = parts[0]
-    const filepath = parts.slice(1).join(' ') || ''
-    
-    let iconSvg = ''
-    switch (actionName) {
-      case '写入文件':
-      case '文件写入':
-      case '创建文件':
-      case '修改文件':
-      case '文件修改':
-        iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>'
-        break
-      case '删除文件':
-      case '文件删除':
-        iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>'
-        break
-      case '读取文件':
-      case '文件读取':
-        iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>'
-        break
-      case '读取目录':
-      case '目录读取':
-        iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>'
-        break
-      case '退出工具调用':
-      case '退出':
-      case 'exit':
-      case '执行结束':
-        iconSvg = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="9 12 11.5 14.5 15 9.5"></polyline></svg>'
-        break
-    }
-    
-    if (iconSvg) {
-      if (match.startsWith('[未完成的工具]')) {
-        iconSvg = '<svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>'
-      }
-      return `\n<div class="tool-call-row">
-        <span class="tool-icon">${iconSvg}</span>
-        <span class="tool-maintext">${actionName}</span>
-        <span class="tool-subtext">${filepath}</span>
-      </div>\n`
-    }
-    
-    // 默认备用显示
-    return `\n<div class="tool-call-row">
-      <span class="tool-icon">🛠</span>
-      <span class="tool-maintext">${action}</span>
-    </div>\n`
+    const filepath = parts.slice(1).join(' ')
+    const icon = TOOL_ICON[actionName]
+    if (!icon) return row(ICONS.write, action)
+    const pending = full.startsWith('[未完成的工具]')
+    return row(pending ? ICONS.spin : icon, actionName, filepath, pending ? 'is-pending' : '')
   })
 
-  // 处理工作流进度节点：匹配 `> 🚀 [初始化] 消息` 或 `> 🚀 **[初始化]** 消息`
-  result = result.replace(/(?:>|&gt;)\s*(🚀|✅|❌|🎉)\s*(?:\*\*)?\[(.*?)\](?:\*\*)?\s*([^\n\r]*)/g, (match, icon, stepName, message) => {
-    let iconSvg = icon
-    if (icon === '🚀') {
-      iconSvg = '<svg class="spin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>'
-    } else if (icon === '✅') {
-      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
-    } else if (icon === '❌') {
-      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#ff4d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
-    } else if (icon === '🎉') {
-      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#722ed1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
-    }
+  // 工作流进度：`> 🚀 [初始化] 消息` 或 `> 🚀 **[初始化]** 消息`
+  result = result.replace(
+    /(?:>|&gt;)\s*(🚀|✅|❌|🎉)\s*(?:\*\*)?\[(.*?)\](?:\*\*)?\s*([^\n\r]*)/g,
+    (_m, icon, stepName, msg) => row(STATUS_ICON[icon] ?? icon, stepName, msg, 'is-step'),
+  )
 
-    return `\n<div class="tool-call-row workflow-step">
-      <span class="tool-icon">${iconSvg}</span>
-      <span class="tool-maintext">[${stepName}]</span>
-      <span class="tool-subtext">${message}</span>
-    </div>\n`
-  })
-
-  // 处理最终完成提示，例如 `✅ Agent 已完成代码生成...`
-  result = result.replace(/(?:^|\n)(✅|❌|🎉)\s*(Agent[^\n\r]*)/g, (match, icon, message) => {
-    let iconSvg = icon
-    if (icon === '✅') {
-      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#52c41a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>'
-    } else if (icon === '❌') {
-      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#ff4d4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>'
-    } else if (icon === '🎉') {
-      iconSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="#722ed1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>'
-    }
-
-    return `\n<div class="tool-call-row workflow-step">
-      <span class="tool-icon">${iconSvg}</span>
-      <span class="tool-maintext">${message}</span>
-    </div>\n`
-  })
+  // 最终完成提示，例如 `✅ Agent 已完成代码生成...`
+  result = result.replace(/(?:^|\n)(✅|❌|🎉)\s*(Agent[^\n\r]*)/g, (_m, icon, msg) =>
+    row(STATUS_ICON[icon] ?? icon, msg, '', 'is-step'),
+  )
 
   return result
 }
 
-// Simple throttle to avoid lagging during fast streaming
-let throttleTimer: any = null
-const updateHtml = () => {
-  if (throttleTimer) return
-  throttleTimer = setTimeout(() => {
-    parsedHtml.value = markedInstance.parse(processContent(props.content || ' ')) as string
-    throttleTimer = null
-  }, 100) // 100ms throttle
+const parsedHtml = ref('')
+let throttleTimer: ReturnType<typeof setTimeout> | null = null
+
+const render = () => {
+  parsedHtml.value = markedInstance.parse(processContent(props.content || ' ')) as string
 }
 
-watch(() => props.content, () => {
-  updateHtml()
-})
+// 流式输出时节流，避免每个 token 都重新解析
+watch(
+  () => props.content,
+  () => {
+    if (throttleTimer) return
+    throttleTimer = setTimeout(() => {
+      render()
+      throttleTimer = null
+    }, 100)
+  },
+)
 
-onMounted(() => {
-  parsedHtml.value = markedInstance.parse(processContent(props.content || ' ')) as string
+onMounted(render)
+onUnmounted(() => {
+  if (throttleTimer) clearTimeout(throttleTimer)
 })
 </script>
 
@@ -179,82 +159,197 @@ onMounted(() => {
 </template>
 
 <style scoped>
+.markdown-body {
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+
+.markdown-body :deep(> *:first-child) {
+  margin-top: 0;
+}
+
+.markdown-body :deep(p) {
+  margin: 0 0 0.8em;
+}
+
+.markdown-body :deep(h1),
+.markdown-body :deep(h2),
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  font-family: var(--font-body);
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 1.3em 0 0.5em;
+}
+
+.markdown-body :deep(h1) {
+  font-size: 21px;
+}
+
+.markdown-body :deep(h2) {
+  font-size: 18px;
+}
+
+.markdown-body :deep(h3),
+.markdown-body :deep(h4) {
+  font-size: 16px;
+}
+
+.markdown-body :deep(ul),
+.markdown-body :deep(ol) {
+  padding-left: 1.4em;
+  margin: 0 0 0.9em;
+}
+
+.markdown-body :deep(li) {
+  margin-bottom: 0.3em;
+}
+
+.markdown-body :deep(li::marker) {
+  color: var(--blue);
+}
+
+.markdown-body :deep(blockquote) {
+  margin: 0 0 0.9em;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--paper-2);
+  color: var(--ink-2);
+}
+
+.markdown-body :deep(a) {
+  text-decoration: underline;
+}
+
+.markdown-body :deep(code) {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--blue-tint);
+  color: var(--op-pink-blue);
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+}
+
+.markdown-body :deep(pre) {
+  margin: 0 0 1em;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  background: var(--sheet);
+  border: 1px solid var(--rule);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.markdown-body :deep(pre code) {
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+}
+
+.markdown-body :deep(table) {
+  width: 100%;
+  margin-bottom: 1em;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.markdown-body :deep(th),
+.markdown-body :deep(td) {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+}
+
+/* ---------- tool & workflow rows ---------- */
 .markdown-body :deep(.tool-call-row) {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;
-  margin: 12px 0 8px 0;
-  border-radius: 10px;
-  background-color: #f4f5f5;
   width: fit-content;
+  max-width: 100%;
+  margin: 6px 0;
+  padding: 6px 14px 6px 10px;
+  border-radius: var(--pill);
+  background: var(--paper-2);
+  font-size: 13px;
+  line-height: 1.4;
 }
-.markdown-body :deep(.tool-call-row.finish-step) {
-  background-color: #f6ffed;
-  border: 1px solid #d9f7be;
-}
-.markdown-body :deep(.tool-call-row.finish-step .tool-maintext) {
-  color: #389e0d;
-}
+
 .markdown-body :deep(.tool-icon) {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #888;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  color: var(--ink-2);
 }
+
 .markdown-body :deep(.tool-maintext) {
-  font-size: 14px;
-  color: #333;
-  font-weight: 500;
-}
-.markdown-body :deep(.tool-subtext) {
-  font-size: 14px;
-  color: #999;
-  font-family: Consolas, Monaco, 'Andale Mono', monospace;
-  margin-left: 2px;
-}
-.markdown-body :deep(h1), .markdown-body :deep(h2), .markdown-body :deep(h3) {
-  margin-top: 1em;
-  margin-bottom: 0.5em;
   font-weight: 600;
+  white-space: nowrap;
 }
-.markdown-body :deep(p) {
-  margin-bottom: 0.8em;
+
+.markdown-body :deep(.tool-subtext) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-3);
 }
-.markdown-body :deep(pre) {
-  background: #282c34;
-  color: #abb2bf;
-  padding: 12px;
-  border-radius: 8px;
-  overflow-x: auto;
-  font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  margin-bottom: 1em;
-}
-.markdown-body :deep(code) {
-  background: rgba(0,0,0,0.05);
-  padding: 2px 4px;
-  border-radius: 4px;
-  font-family: Consolas, Monaco, 'Andale Mono', monospace;
-  font-size: 13px;
-}
-.markdown-body :deep(pre code) {
+
+.markdown-body :deep(.tool-call-row.is-step) {
+  align-items: flex-start;
   background: transparent;
-  padding: 0;
+  padding-left: 2px;
+  border-radius: 0;
 }
-.markdown-body :deep(ul), .markdown-body :deep(ol) {
-  padding-left: 1.5em;
-  margin-bottom: 1em;
+
+.markdown-body :deep(.tool-call-row.is-step .tool-icon) {
+  margin-top: 2px;
 }
-.markdown-body :deep(li) {
-  margin-bottom: 0.25em;
+
+.markdown-body :deep(.tool-call-row.is-step .tool-maintext) {
+  white-space: normal;
 }
-@keyframes spin {
-  100% {
+
+.markdown-body :deep(.tool-call-row.is-step .tool-subtext) {
+  font-family: var(--font-body);
+  font-size: 13px;
+  white-space: normal;
+}
+
+.markdown-body :deep(.tool-call-row.is-pending) {
+  background: var(--yellow-tint);
+}
+
+.markdown-body :deep(.tool-call-row.is-finish) {
+  background: var(--blue-tint);
+}
+
+.markdown-body :deep(.is-ok) {
+  color: var(--success);
+}
+
+.markdown-body :deep(.is-fail) {
+  color: var(--danger);
+}
+
+.markdown-body :deep(.is-star) {
+  color: var(--blue);
+}
+
+.markdown-body :deep(.spin-icon) {
+  color: var(--blue);
+  animation: md-spin 0.9s linear infinite;
+}
+
+@keyframes md-spin {
+  to {
     transform: rotate(360deg);
   }
-}
-.markdown-body :deep(.spin-icon) {
-  animation: spin 1s linear infinite;
 }
 </style>

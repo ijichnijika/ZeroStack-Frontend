@@ -1,53 +1,60 @@
-/* color palette from <https://github.com/vuejs/theme> */
+/*
+ * ZeroStack · Riso tokens
+ * Four drums only. Any other tone is an overprint (multiply) or a tint screen of these.
+ */
 :root {
-  --vt-c-white: #ffffff;
-  --vt-c-white-soft: #f8f8f8;
-  --vt-c-white-mute: #f2f2f2;
+  /* paper */
+  --paper: #fafaf7;
+  --paper-2: #efefea;
+  --paper-3: #e4e4dd;
+  --sheet: #ffffff;
 
-  --vt-c-black: #181818;
-  --vt-c-black-soft: #222222;
-  --vt-c-black-mute: #282828;
+  /* drums */
+  --ink: #17171a;
+  --blue: #0078bf;
+  --pink: #ff48b0;
+  --yellow: #ffe800;
 
-  --vt-c-indigo: #2c3e50;
+  /* overprints (multiply of two drums) */
+  --op-pink-yellow: #ff4100;
+  --op-blue-yellow: #006d00;
+  --op-pink-blue: #002284;
 
-  --vt-c-divider-light-1: rgba(60, 60, 60, 0.29);
-  --vt-c-divider-light-2: rgba(60, 60, 60, 0.12);
-  --vt-c-divider-dark-1: rgba(84, 84, 84, 0.65);
-  --vt-c-divider-dark-2: rgba(84, 84, 84, 0.48);
+  /* tint screens */
+  --ink-2: #4a4a50;
+  --ink-3: #6b6b72;
+  --ink-4: #a3a3a8;
+  --rule: rgba(23, 23, 26, 0.14);
+  --blue-tint: #dcecf7;
+  --pink-tint: #ffe0f1;
+  --yellow-tint: #fff7a8;
 
-  --vt-c-text-light-1: var(--vt-c-indigo);
-  --vt-c-text-light-2: rgba(60, 60, 60, 0.66);
-  --vt-c-text-dark-1: var(--vt-c-white);
-  --vt-c-text-dark-2: rgba(235, 235, 235, 0.64);
-}
+  /* semantic: danger is pink×yellow keyed with a 25% black screen; success is the blue×yellow overprint */
+  --danger: #bf3100;
+  --success: #006d00;
 
-/* semantic color variables for this project */
-:root {
-  --color-background: var(--vt-c-white);
-  --color-background-soft: var(--vt-c-white-soft);
-  --color-background-mute: var(--vt-c-white-mute);
+  /* type */
+  --font-display: 'ZCOOL QingKe HuangYou', 'Archivo Variable', 'PingFang SC', sans-serif;
+  --font-wide: 'Archivo Variable', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  --font-body: 'Archivo Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
+    system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Menlo, monospace;
 
-  --color-border: var(--vt-c-divider-light-2);
-  --color-border-hover: var(--vt-c-divider-light-1);
+  /* shape */
+  --radius: 4px;
+  --radius-lg: 10px;
+  --pill: 999px;
 
-  --color-heading: var(--vt-c-text-light-1);
-  --color-text: var(--vt-c-text-light-1);
+  /* depth: floating layers only */
+  --lift: 0 12px 32px -8px rgba(23, 23, 26, 0.22), 0 2px 6px rgba(23, 23, 26, 0.08);
 
-  --section-gap: 160px;
-}
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --t-fast: 160ms;
+  --t-register: 620ms;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --color-background: var(--vt-c-black);
-    --color-background-soft: var(--vt-c-black-soft);
-    --color-background-mute: var(--vt-c-black-mute);
-
-    --color-border: var(--vt-c-divider-dark-2);
-    --color-border-hover: var(--vt-c-divider-dark-1);
-
-    --color-heading: var(--vt-c-text-dark-1);
-    --color-text: var(--vt-c-text-dark-2);
-  }
+  --header-h: 64px;
 }
 
 *,
@@ -55,84 +62,102 @@
 *::after {
   box-sizing: border-box;
   margin: 0;
-  font-weight: normal;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scrollbar-color: var(--ink-4) transparent;
 }
 
 body {
   min-height: 100vh;
-  color: var(--color-text);
-  background: var(--color-background);
-  transition:
-    color 0.5s,
-    background-color 0.5s;
-  line-height: 1.6;
-  font-family:
-    Inter,
-    -apple-system,
-    BlinkMacSystemFont,
-    'Segoe UI',
-    Roboto,
-    Oxygen,
-    Ubuntu,
-    Cantarell,
-    'Fira Sans',
-    'Droid Sans',
-    'Helvetica Neue',
-    sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
   font-size: 15px;
+  line-height: 1.6;
+  font-feature-settings: 'tnum' 0;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  caret-color: var(--pink);
 }
 
-/* Typography and Layout Hierarchy */
 h1,
 h2,
 h3,
-h4,
-h5,
-h6 {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  color: #1f1f1f;
-  font-weight: 600;
-  line-height: 1.3;
+h4 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--ink);
+  line-height: 1.1;
   text-wrap: balance;
-  margin-top: 0;
-}
-
-h1 {
-  font-size: 32px;
-  margin-bottom: 20px;
-}
-
-h2 {
-  font-size: 24px;
-  margin-bottom: 16px;
-  font-weight: 600;
-  color: #111827;
-}
-
-h3 {
-  font-size: 18px;
-  margin-bottom: 12px;
-  font-weight: 500;
-  color: #374151;
+  margin: 0;
 }
 
 p {
-  font-size: 15px;
-  line-height: 1.6;
-  color: #4b5563;
-  margin-bottom: 16px;
+  margin: 0;
+  text-wrap: pretty;
 }
 
 a {
-  color: #1890ff;
+  color: var(--blue);
   text-decoration: none;
-  transition: color 0.2s ease;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
 }
 
 a:hover {
-  color: #40a9ff;
+  text-decoration: underline;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+::selection {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--ink-4);
+  border: 3px solid transparent;
+  background-clip: padding-box;
+  border-radius: var(--pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

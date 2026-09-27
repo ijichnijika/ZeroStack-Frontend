@@ -7,7 +7,8 @@ import { listAppVoByPageByAdmin, deleteAppByAdmin, updateAppByAdmin } from '@/ap
 import { useAdminTable } from '@/composables/useAdminTable'
 import { formatDate } from '@/utils/formatDate'
 import { cleanEmptyStringParams } from '@/utils/cleanParams'
-import AdminPageHeader from '@/components/admin/AdminPageHeader.vue'
+import PageHead from '@/components/PageHead.vue'
+import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
 import AdminSearchPanel from '@/components/admin/AdminSearchPanel.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 
@@ -66,8 +67,8 @@ const handleDelete = async (id: number) => {
     } else {
       message.error(res.data?.message || '删除失败')
     }
-  } catch (error: any) {
-    message.error(error.message || '网络异常')
+  } catch (error: unknown) {
+    message.error(error instanceof Error ? error.message : '网络异常')
   }
 }
 
@@ -81,8 +82,8 @@ const handleSetFeature = async (id: number) => {
     } else {
       message.error(res.data?.message || '设置精选失败')
     }
-  } catch (error: any) {
-    message.error(error.message || '网络异常')
+  } catch (error: unknown) {
+    message.error(error instanceof Error ? error.message : '网络异常')
   }
 }
 
@@ -97,9 +98,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="app-manage-page">
-    <!-- 页头：仅标题，无操作按钮 -->
-    <AdminPageHeader title="应用管理看板" subtitle="管理系统内所有应用资源及精选推荐" />
+  <div class="page">
+    <PageHead title="应用管理" subtitle="查看全部应用，编辑信息、设为精选或删除。" />
 
     <!-- 搜索筛选区域 -->
     <AdminSearchPanel>
@@ -118,8 +118,9 @@ onMounted(() => {
         </a-form-item>
         <a-form-item label="生成类型">
           <a-select v-model:value="searchParams.codeGenType" placeholder="请选择生成类型" style="width: 160px" allow-clear>
-            <a-select-option value="html">原生 HTML 模式</a-select-option>
-            <a-select-option value="multi_file">原生多文件模式</a-select-option>
+            <a-select-option v-for="t in Object.values(CODE_GEN_TYPE_CONFIG)" :key="t.value" :value="t.value">
+              {{ t.label }}
+            </a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="部署Key">
@@ -149,7 +150,7 @@ onMounted(() => {
         :pagination="false"
         :scroll="{ x: 'max-content' }"
         row-key="id"
-        class="custom-table glass-table"
+        class="ink-table"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'cover'">
@@ -220,40 +221,3 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-.app-manage-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.table-container {
-  background: transparent;
-}
-
-.custom-table :deep(.ant-table-thead > tr > th) {
-  font-weight: 600;
-  color: #262626;
-}
-
-.edit-link {
-  color: #1890ff;
-}
-
-.edit-link:hover {
-  color: #40a9ff;
-}
-
-/* 精选按钮使用醒目的金色，与编辑/删除区分 */
-.feature-link {
-  color: #faad14;
-}
-
-.delete-link {
-  color: #ff4d4f;
-}
-
-.delete-link:hover {
-  color: #ff7875;
-}
-</style>

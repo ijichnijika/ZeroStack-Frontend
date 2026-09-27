@@ -17,6 +17,9 @@
   },
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/jetbrains-mono": "^5.3.0",
+    "@fontsource/zcool-qingke-huangyou": "^5.3.0",
     "ant-design-vue": "^4.2.6",
     "axios": "^1.18.1",
     "highlight.js": "^11.11.1",

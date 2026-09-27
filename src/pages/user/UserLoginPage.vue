@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { message } from 'ant-design-vue'
+import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
 import { userLogin } from '@/api/userController'
-import { message } from 'ant-design-vue'
-import { UserOutlined, LockOutlined, ArrowLeftOutlined } from '@ant-design/icons-vue'
+import AuthShell from '@/components/AuthShell.vue'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
-
 const loading = ref(false)
 
 const formState = reactive<API.UserLoginRequest>({
@@ -17,412 +17,75 @@ const formState = reactive<API.UserLoginRequest>({
   userPassword: '',
 })
 
+const rules = {
+  userAccount: [
+    { required: true, message: '请输入账号' },
+    { min: 4, message: '账号至少 4 位' },
+  ],
+  userPassword: [
+    { required: true, message: '请输入密码' },
+    { min: 8, message: '密码至少 8 位' },
+  ],
+}
+
 const handleSubmit = async () => {
-  if (!formState.userAccount || !formState.userPassword) {
-    message.warning('请输入账号和密码')
-    return
-  }
-  
   loading.value = true
   try {
     const res = await userLogin(formState)
-    if (res.data?.code === 0 && res.data?.data) {
-      message.success('登录成功！')
+    if (res.data?.code === 0 && res.data.data) {
       userStore.setLoginUser(res.data.data)
-      
-      const redirect = route.query.redirect as string
-      router.replace(redirect || '/')
+      message.success('登录成功')
+      router.replace((route.query.redirect as string) || '/')
     } else {
-      message.error(res.data?.message || '登录失败，请检查账号和密码')
+      message.error(res.data?.message || '账号或密码不正确')
     }
-  } catch (error: any) {
-    message.error(error.message || '网络异常，请重试')
+  } catch (error: unknown) {
+    message.error(error instanceof Error ? error.message : '网络异常，请重试')
   } finally {
     loading.value = false
   }
 }
-
-// 统一表单验证规则
-const rules = {
-  userAccount: [
-    { required: true, message: '请输入账号' },
-    { min: 4, message: '账号长度不能少于 4 位' }
-  ],
-  userPassword: [
-    { required: true, message: '请输入密码' },
-    { min: 8, message: '密码长度不能少于 8 位' }
-  ]
-}
 </script>
 
 <template>
-  <div class="login-container">
-    <router-link to="/" class="back-home-btn" aria-label="返回主页">
-      <ArrowLeftOutlined aria-hidden="true" />
-      <span>返回主页</span>
-    </router-link>
-    
-    <div class="glass-card animate-fade-in">
-      <!-- 左侧 3D 插画区域 -->
-      <div class="left-section">
-        <div class="illustration-overlay"></div>
+  <AuthShell title="登录" subtitle="欢迎回来，继续做你的网站。">
+    <a-form :model="formState" layout="vertical" :required-mark="false" @finish="handleSubmit">
+      <a-form-item name="userAccount" :rules="rules.userAccount">
+        <a-input
+          v-model:value="formState.userAccount"
+          placeholder="账号"
+          aria-label="账号"
+          autocomplete="username"
+          :spellcheck="false"
+        >
+          <template #prefix><UserOutlined /></template>
+        </a-input>
+      </a-form-item>
+      <a-form-item name="userPassword" :rules="rules.userPassword">
+        <a-input-password
+          v-model:value="formState.userPassword"
+          placeholder="密码"
+          aria-label="密码"
+          autocomplete="current-password"
+        >
+          <template #prefix><LockOutlined /></template>
+        </a-input-password>
+      </a-form-item>
+      <a-button type="primary" html-type="submit" block :loading="loading" class="auth-submit">登录</a-button>
+      <div class="auth-foot">
+        <span>还没有账号？<router-link to="/user/register">注册一个</router-link></span>
+        <a-tooltip title="目前需要联系管理员重置密码">
+          <span class="forgot">忘记密码</span>
+        </a-tooltip>
       </div>
-
-      <!-- 右侧表单操作区域 -->
-      <div class="right-section">
-        <div class="form-wrapper">
-          <!-- 品牌徽标 -->
-          <div class="brand-badge-wrapper">
-            <div class="brand-badge-icon">
-              <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" class="compiler-core-svg" aria-hidden="true">
-                <path d="M24 6L40 15L24 24L8 15L24 6Z" fill="#4F46E5" />
-                <path d="M8 21L24 30L40 21" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M8 27L24 36L40 27" stroke="#4F46E5" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <path d="M8 33L24 42L40 33" stroke="#312E81" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                <circle cx="24" cy="15" r="2.5" fill="#FFFFFF"/>
-              </svg>
-            </div>
-          </div>
-
-          <div class="header">
-            <h2>欢迎回来</h2>
-            <p class="subtitle">输入您的账号密码以登录系统</p>
-          </div>
-
-          <a-form
-            :model="formState"
-            layout="vertical"
-            class="login-form"
-            @finish="handleSubmit"
-          >
-            <a-form-item
-              name="userAccount"
-              :rules="rules.userAccount"
-            >
-              <a-input
-                v-model:value="formState.userAccount"
-                placeholder="请输入账号…"
-                size="large"
-                class="precision-input"
-                name="userAccount"
-                aria-label="账号"
-                autocomplete="username"
-                :spellcheck="false"
-              >
-                <template #prefix>
-                  <UserOutlined class="input-icon" aria-hidden="true" />
-                </template>
-              </a-input>
-            </a-form-item>
-
-            <a-form-item
-              name="userPassword"
-              :rules="rules.userPassword"
-            >
-              <a-input-password
-                v-model:value="formState.userPassword"
-                placeholder="请输入密码…"
-                size="large"
-                class="precision-input"
-                name="userPassword"
-                aria-label="密码"
-                autocomplete="current-password"
-              >
-                <template #prefix>
-                  <LockOutlined class="input-icon" aria-hidden="true" />
-                </template>
-              </a-input-password>
-            </a-form-item>
-
-            <a-form-item>
-              <a-button
-                type="primary"
-                html-type="submit"
-                size="large"
-                block
-                :loading="loading"
-                class="primary-animated-btn"
-                style="width: 100%; height: 44px; margin-top: 6px;"
-              >
-                登录
-              </a-button>
-            </a-form-item>
-
-            <div class="form-footer">
-              <router-link to="/user/register" class="footer-link">注册账号</router-link>
-              <span class="divider-line">|</span>
-              <button type="button" class="footer-link-btn gray" @click="message.info('请联系系统管理员重置密码')">忘记密码</button>
-            </div>
-          </a-form>
-        </div>
-      </div>
-    </div>
-  </div>
+    </a-form>
+  </AuthShell>
 </template>
 
 <style scoped>
-.login-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background: transparent;
-  padding: 40px 24px;
-  position: relative;
-}
-
-.back-home-btn {
-  position: absolute;
-  top: 24px;
-  left: 24px;
-  z-index: 10;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: #475569;
-  font-size: 14px;
-  font-weight: 500;
-  padding: 8px 16px;
-  border-radius: 9999px;
-  text-decoration: none;
-  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
-  background: rgba(255, 255, 255, 0.75);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
-}
-
-.back-home-btn:hover {
-  color: #4f46e5;
-  background: rgba(255, 255, 255, 0.95);
-  border-color: rgba(99, 102, 241, 0.35);
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15);
-}
-
-.back-home-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1;
-}
-
-.glass-card {
-  display: flex;
-  width: 100%;
-  max-width: 920px;
-  min-height: 560px;
-  background: rgba(255, 255, 255, 0.78) !important;
-  backdrop-filter: blur(24px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
-  border-radius: 20px;
-  box-shadow: 0 24px 48px -12px rgba(31, 38, 135, 0.12), inset 0 1px 1px rgba(255, 255, 255, 0.95) !important;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
-}
-
-/* 左侧 3D 插画区域 */
-.left-section {
-  width: 44%;
-  position: relative;
-  background-image: url('@/assets/login_illustration.png');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  border-right: 1px solid rgba(15, 23, 42, 0.06);
-}
-
-.illustration-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(79, 70, 229, 0.06) 0%, rgba(15, 23, 42, 0.03) 100%);
-}
-
-/* 右侧表单操作区域 */
-.right-section {
-  width: 56%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 48px;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(12px);
-}
-
-.form-wrapper {
-  width: 100%;
-  max-width: 360px;
-  position: relative;
-}
-
-/* 品牌徽标 */
-.brand-badge-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-.brand-badge-icon {
-  width: 52px;
-  height: 52px;
-  padding: 6px;
-  border-radius: 12px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.compiler-core-svg {
-  width: 100%;
-  height: 100%;
-}
-
-.header {
-  text-align: center;
-  margin-bottom: 28px;
-}
-
-.header h2 {
-  font-size: 24px;
-  color: #0f172a;
-  font-weight: 700;
-  letter-spacing: -0.4px;
-  margin-bottom: 6px;
-  text-wrap: balance;
-}
-
-.subtitle {
-  font-size: 14px;
-  color: #64748b;
-  margin-bottom: 0;
-}
-
-/* 表单输入框 */
-.precision-input {
-  border-radius: 10px !important;
-  background-color: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(8px) !important;
-  border: 1px solid rgba(226, 232, 240, 0.9) !important;
-  padding: 8px 14px !important;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.03) !important;
-  transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease !important;
-}
-
-.precision-input:hover {
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  background-color: rgba(255, 255, 255, 0.88) !important;
-}
-
-.precision-input:focus-within {
-  border-color: #6366f1 !important;
-  background-color: #ffffff !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(99, 102, 241, 0.1) !important;
-}
-
-.precision-input :deep(.ant-input) {
-  background-color: transparent !important;
-  font-size: 14px !important;
-  color: #0f172a !important;
-}
-
-.input-icon {
-  color: #94a3af;
-  margin-right: 6px;
-  font-size: 15px;
-}
-
-/* 表单底部 */
-.form-footer {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  margin-top: 24px;
-}
-
-.footer-link {
-  color: #4f46e5;
-  font-weight: 600;
-  text-decoration: none;
-  transition: color 0.2s ease;
-}
-
-.footer-link:hover {
-  color: #4338ca;
-}
-
-.footer-link.gray {
-  color: #94a3af;
-  font-weight: 400;
-}
-
-.footer-link.gray:hover {
-  color: #64748b;
-}
-
-.footer-link-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  font-family: inherit;
-  font-size: 13px;
-  cursor: pointer;
-  outline: none;
-  transition: color 0.2s ease;
-}
-
-.footer-link-btn.gray {
-  color: #94a3af;
-}
-
-.footer-link-btn.gray:hover {
-  color: #64748b;
-}
-
-.footer-link-btn:focus-visible {
-  outline: 2px solid #6366f1;
-  border-radius: 2px;
-}
-
-.divider-line {
-  color: #e2e8f0;
-  user-select: none;
-}
-
-/* 动效 */
-.animate-fade-in {
-  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* 响应式适配 */
-@media (max-width: 768px) {
-  .glass-card {
-    max-width: 440px;
-    min-height: auto;
-  }
-  
-  .left-section {
-    display: none;
-  }
-  
-  .right-section {
-    width: 100%;
-    padding: 40px 24px 32px;
-  }
+.forgot {
+  cursor: help;
+  text-decoration: underline dotted;
+  text-underline-offset: 3px;
 }
 </style>

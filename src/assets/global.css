@@ -1,247 +1,16 @@
-/* 背景环境 */
-.aurora-glow-container,
-.liquid-bg-container,
-.precision-bg-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  z-index: -1;
-  overflow: hidden;
-  background-color: #f8faff;
-  pointer-events: none;
+@import './base.css';
+
+/* ------------------------------------------------------------------ */
+/*  Layout primitives                                                  */
+/* ------------------------------------------------------------------ */
+
+.page {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding-inline: clamp(20px, 4vw, 48px);
 }
 
-.aurora-orb {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.45;
-  will-change: transform;
-  animation: aurora-float 22s infinite alternate ease-in-out;
-}
-
-.aurora-orb.orb-1 {
-  width: 620px;
-  height: 620px;
-  background: radial-gradient(circle, #6366f1 0%, rgba(99, 102, 241, 0) 70%);
-  top: -120px;
-  left: 10%;
-  animation-duration: 20s;
-}
-
-.aurora-orb.orb-2 {
-  width: 700px;
-  height: 700px;
-  background: radial-gradient(circle, #c084fc 0%, rgba(192, 132, 252, 0) 70%);
-  top: 15%;
-  right: -120px;
-  animation-duration: 26s;
-}
-
-.aurora-orb.orb-3 {
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, #38bdf8 0%, rgba(56, 189, 248, 0) 70%);
-  bottom: -80px;
-  left: 5%;
-  animation-duration: 22s;
-}
-
-.aurora-orb.orb-4 {
-  width: 480px;
-  height: 480px;
-  background: radial-gradient(circle, #f472b6 0%, rgba(244, 114, 182, 0) 70%);
-  bottom: 12%;
-  right: 22%;
-  animation-duration: 28s;
-}
-
-.aurora-grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(rgba(15, 23, 42, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
-}
-
-@keyframes aurora-float {
-  0% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(35px, -25px) scale(1.06);
-  }
-  100% {
-    transform: translate(-25px, 30px) scale(0.96);
-  }
-}
-
-/* 玻璃态效果 */
-.glass-effect {
-  background: rgba(255, 255, 255, 0.72) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  -webkit-backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.06), inset 0 1px 1px 0 rgba(255, 255, 255, 0.9) !important;
-  border-radius: 18px;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease, transform 0.25s ease !important;
-}
-
-.glass-effect:hover {
-  border-color: rgba(99, 102, 241, 0.35) !important;
-  box-shadow: 0 14px 38px 0 rgba(99, 102, 241, 0.12), inset 0 1px 1px 0 rgba(255, 255, 255, 0.95) !important;
-}
-
-/* 玻璃态输入框 */
-.glass-input {
-  background: rgba(255, 255, 255, 0.68) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.85) !important;
-  border-radius: 10px !important;
-  color: #0f172a !important;
-  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 6px rgba(0, 0, 0, 0.02) !important;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease !important;
-}
-
-.glass-input:hover {
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  background: rgba(255, 255, 255, 0.82) !important;
-}
-
-.glass-input:focus,
-.glass-input-focused {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: #6366f1 !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2), 0 4px 12px rgba(99, 102, 241, 0.1) !important;
-}
-
-/* 下拉菜单与选择器 */
-.glass-dropdown .ant-dropdown-menu,
-.glass-dropdown.ant-dropdown-menu,
-.glass-dropdown .ant-menu,
-.ant-select-dropdown,
-.ant-dropdown-menu,
-.ant-picker-dropdown {
-  background: rgba(255, 255, 255, 0.88) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
-  border-radius: 12px !important;
-  box-shadow: 0 12px 36px -4px rgba(31, 38, 135, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.05) !important;
-  z-index: 100000 !important;
-}
-
-/* 头像光圈包裹层 */
-.glow-avatar-wrapper {
-  position: relative;
-  display: inline-flex;
-  padding: 2.5px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #6366f1 0%, #a855f7 50%, #38bdf8 100%);
-  box-shadow: 0 0 14px rgba(99, 102, 241, 0.35);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-
-.glow-avatar-wrapper:hover {
-  transform: scale(1.05);
-  box-shadow: 0 0 22px rgba(168, 85, 247, 0.55);
-}
-
-/* 表格样式覆盖 */
-.glass-table .ant-table {
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(16px) !important;
-  -webkit-backdrop-filter: blur(16px) !important;
-  border-radius: 14px !important;
-  border: 1px solid rgba(255, 255, 255, 0.85) !important;
-  box-shadow: 0 6px 24px rgba(31, 38, 135, 0.05) !important;
-  overflow: hidden;
-}
-
-.glass-table .ant-table-thead > tr > th {
-  background: rgba(248, 250, 252, 0.7) !important;
-  color: #334155 !important;
-  font-weight: 600 !important;
-  border-bottom: 1px solid rgba(226, 232, 240, 0.8) !important;
-}
-
-.glass-table .ant-table-tbody > tr > td {
-  border-bottom: 1px solid rgba(241, 245, 249, 0.7) !important;
-  background: rgba(255, 255, 255, 0.45) !important;
-  color: #334155 !important;
-  transition: background 0.15s ease;
-}
-
-.glass-table .ant-table-tbody > tr:hover > td {
-  background: rgba(238, 242, 255, 0.65) !important;
-}
-
-/* 主按钮 */
-.primary-animated-btn {
-  font-family: inherit !important;
-  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #6366f1 100%) !important;
-  background-size: 200% 200% !important;
-  color: #ffffff !important;
-  border: none !important;
-  border-radius: 9999px !important;
-  font-weight: 500 !important;
-  box-shadow: 0 4px 14px -1px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3) !important;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease, background-position 0.4s ease, filter 0.2s ease !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  letter-spacing: 0.3px;
-}
-
-.primary-animated-btn:hover {
-  background-position: 100% 100% !important;
-  box-shadow: 0 6px 20px rgba(99, 102, 241, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.45) !important;
-  transform: translateY(-1.5px);
-  filter: brightness(1.03);
-}
-
-.primary-animated-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1, 0 6px 20px rgba(99, 102, 241, 0.4) !important;
-}
-
-.primary-animated-btn:active {
-  transform: translateY(0);
-}
-
-/* 次级按钮 */
-.secondary-animated-btn {
-  font-family: inherit !important;
-  background: rgba(255, 255, 255, 0.75) !important;
-  backdrop-filter: blur(12px) !important;
-  -webkit-backdrop-filter: blur(12px) !important;
-  color: #334155 !important;
-  border: 1px solid rgba(255, 255, 255, 0.9) !important;
-  border-radius: 9999px !important;
-  font-weight: 500 !important;
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease !important;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.secondary-animated-btn:hover {
-  background: rgba(255, 255, 255, 0.94) !important;
-  border-color: rgba(99, 102, 241, 0.35) !important;
-  color: #4f46e5 !important;
-  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.15) !important;
-  transform: translateY(-1px);
-}
-
-.secondary-animated-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px #ffffff, 0 0 0 4px #6366f1 !important;
-}
-
-/* 无障碍辅助类 */
 .sr-only {
   position: absolute;
   width: 1px;
@@ -251,34 +20,382 @@
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
-  border-width: 0;
+  border: 0;
 }
 
-.sr-only:focus {
+.skip-link:focus {
   position: fixed;
   top: 12px;
   left: 12px;
   z-index: 9999;
   width: auto;
   height: auto;
-  padding: 8px 16px;
-  margin: 0;
   clip: auto;
-  white-space: normal;
-  background-color: #4f46e5;
-  color: #ffffff;
-  border-radius: 6px;
-  font-weight: 500;
-  text-decoration: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  padding: 8px 16px;
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 600;
+  border-radius: var(--pill);
 }
 
-/* 减弱动态效果适配 */
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* halftone screen of the current color */
+.halftone {
+  background-image: radial-gradient(currentColor 1.15px, transparent 1.35px);
+  background-size: 7px 7px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Buttons                                                            */
+/* ------------------------------------------------------------------ */
+
+.btn {
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border: 1.5px solid transparent;
+  border-radius: var(--pill);
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  overflow: hidden;
+  text-decoration: none;
+  transition:
+    background-color var(--t-fast) var(--ease-out),
+    border-color var(--t-fast) var(--ease-out),
+    color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
+}
+
+.btn:hover {
+  text-decoration: none;
+}
+
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.btn .anticon {
+  font-size: 15px;
+}
+
+.btn--sm {
+  height: 32px;
+  padding: 0 13px;
+  font-size: 13px;
+}
+
+.btn--lg {
+  height: 48px;
+  padding: 0 24px;
+  font-size: 15px;
+}
+
+.btn--ink {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn--ink:hover:not(:disabled) {
+  background: var(--blue);
+}
+
+/* pink drum; hover overprints a yellow plate across it */
+.btn--pink {
+  background: var(--pink);
+  color: var(--ink);
+}
+
+.btn--pink::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--yellow);
+  mix-blend-mode: multiply;
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 420ms var(--ease-out);
+}
+
+.btn--pink:hover:not(:disabled)::after,
+.btn--pink:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.btn--line {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+.btn--line:hover:not(:disabled) {
+  background: var(--ink);
+  color: #fff;
+}
+
+.btn--quiet {
+  color: var(--ink-2);
+}
+
+.btn--quiet:hover:not(:disabled) {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.btn--danger {
+  color: var(--danger);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: var(--pink-tint);
+}
+
+.btn--icon {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+}
+
+.btn--icon.btn--sm {
+  width: 32px;
+  height: 32px;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Tags: small ink stamps                                             */
+/* ------------------------------------------------------------------ */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: var(--pill);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.tag--pink {
+  background: var(--pink);
+}
+
+.tag--blue {
+  background: var(--blue);
+  color: #fff;
+}
+
+.tag--yellow {
+  background: var(--yellow);
+}
+
+.tag--ink {
+  background: var(--ink);
+  color: #fff;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Admin / Operate tables                                             */
+/* ------------------------------------------------------------------ */
+
+.ink-table .ant-table,
+.ink-table .ant-table-container,
+.ink-table .ant-table-thead > tr > th:first-child,
+.ink-table .ant-table-thead > tr > th:last-child {
+  border-radius: 0 !important;
+}
+
+.ink-table .ant-table {
+  background: var(--sheet);
+}
+
+.ink-table .ant-table-container {
+  border-top: 2px solid var(--ink);
+}
+
+.ink-table .ant-table-tbody > tr.ant-table-measure-row > td {
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+.ink-table .ant-table-thead > tr > th {
+  background: var(--sheet) !important;
+  color: var(--ink-3);
+  font-size: 12px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--rule) !important;
+  padding: 12px 16px !important;
+}
+
+.ink-table .ant-table-thead > tr > th::before {
+  display: none;
+}
+
+.ink-table .ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--rule) !important;
+  padding: 12px 16px !important;
+  font-variant-numeric: tabular-nums;
+}
+
+.ink-table .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: var(--yellow-tint) !important;
+}
+
+.ink-table .ant-avatar {
+  background: var(--blue-tint);
+  color: var(--blue);
+}
+
+.ink-table .ant-table-cell-fix-right {
+  background: var(--sheet) !important;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Ant Design floating layers                                         */
+/* ------------------------------------------------------------------ */
+
+.ant-dropdown .ant-dropdown-menu,
+.ant-select-dropdown,
+.ant-popover .ant-popover-inner {
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--lift) !important;
+}
+
+.ant-dropdown .ant-dropdown-menu {
+  padding: 6px !important;
+}
+
+.ant-dropdown .ant-dropdown-menu-item {
+  border-radius: 6px !important;
+  padding: 8px 12px !important;
+}
+
+.ant-dropdown .ant-dropdown-menu-item:hover {
+  background: var(--yellow-tint) !important;
+}
+
+.ant-modal .ant-modal-content {
+  border-radius: var(--radius-lg);
+  box-shadow: var(--lift);
+}
+
+.ant-modal .ant-modal-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 24px;
+}
+
+.ant-tooltip .ant-tooltip-inner {
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.ant-message .ant-message-notice-content {
+  border-radius: var(--pill) !important;
+  box-shadow: var(--lift) !important;
+  padding: 9px 16px !important;
+}
+
+.ant-form-item .ant-form-item-label > label {
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+/* ------------------------------------------------------------------ */
+/*  Code highlight: printed in the four drums                          */
+/* ------------------------------------------------------------------ */
+
+.hljs {
+  color: var(--ink);
+  background: transparent;
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--ink-3);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-built_in,
+.hljs-meta .hljs-keyword,
+.hljs-doctag {
+  color: var(--blue);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-addition,
+.hljs-meta .hljs-string {
+  color: var(--success);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable,
+.hljs-selector-attr,
+.hljs-selector-pseudo {
+  color: var(--op-pink-blue);
+}
+
+.hljs-tag,
+.hljs-name,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-deletion {
+  color: var(--danger);
+}
+
+.hljs-section,
+.hljs-title.function_ {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.hljs-title,
+.hljs-title.class_ {
+  color: var(--ink);
+}
+
+.hljs-type,
+.hljs-symbol,
+.hljs-bullet,
+.hljs-link,
+.hljs-meta,
+.hljs-params {
+  color: var(--ink-2);
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-strong {
+  font-weight: 700;
 }

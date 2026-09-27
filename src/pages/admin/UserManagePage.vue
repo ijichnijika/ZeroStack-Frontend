@@ -5,7 +5,7 @@ import { SearchOutlined, ReloadOutlined, EditOutlined, DeleteOutlined, UserOutli
 import { listUserVoByPage, addUser, updateUser, deleteUser } from '@/api/userController'
 import { useAdminTable } from '@/composables/useAdminTable'
 import { formatDate } from '@/utils/formatDate'
-import AdminPageHeader from '@/components/admin/AdminPageHeader.vue'
+import PageHead from '@/components/PageHead.vue'
 import AdminSearchPanel from '@/components/admin/AdminSearchPanel.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 import { ref } from 'vue'
@@ -57,8 +57,8 @@ const handleDelete = async (id: number) => {
     } else {
       message.error(res.data?.message || '删除失败')
     }
-  } catch (error: any) {
-    message.error(error.message || '网络异常')
+  } catch (error: unknown) {
+    message.error(error instanceof Error ? error.message : '网络异常')
   }
 }
 
@@ -132,8 +132,8 @@ const handleModalSubmit = async () => {
     } else {
       message.error(res.data?.message || '操作失败')
     }
-  } catch (error: any) {
-    message.error(error.message || '网络异常')
+  } catch (error: unknown) {
+    message.error(error instanceof Error ? error.message : '网络异常')
   } finally {
     submitLoading.value = false
   }
@@ -145,14 +145,13 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="user-manage-page">
-    <!-- 页头：标题 + 新建按钮 -->
-    <AdminPageHeader title="用户管理看板" subtitle="管理系统用户、角色分配以及状态监控">
-      <a-button type="primary" size="large" class="action-btn" @click="openAddModal">
-        <template #icon><PlusOutlined /></template>
+  <div class="page">
+    <PageHead title="用户管理" subtitle="新建用户、调整角色或删除账号。">
+      <button type="button" class="btn btn--ink" @click="openAddModal">
+        <PlusOutlined />
         新建用户
-      </a-button>
-    </AdminPageHeader>
+      </button>
+    </PageHead>
 
     <!-- 搜索筛选区域 -->
     <AdminSearchPanel>
@@ -193,20 +192,20 @@ onMounted(() => {
         :pagination="false"
         :scroll="{ x: 1000 }"
         row-key="id"
-        class="custom-table glass-table"
+        class="ink-table"
       >
         <template #bodyCell="{ column, record }">
           <!-- 头像渲染 -->
           <template v-if="column.key === 'userAvatar'">
-            <a-avatar :src="record.userAvatar" :size="32" style="border: 1px solid rgba(15, 23, 42, 0.08);">
+            <a-avatar :src="record.userAvatar" :size="32">
               <template #icon><UserOutlined /></template>
             </a-avatar>
           </template>
 
           <!-- 角色渲染 -->
           <template v-else-if="column.key === 'userRole'">
-            <a-tag v-if="record.userRole === 'admin'" color="blue" class="role-tag">管理员</a-tag>
-            <a-tag v-else class="role-tag">普通用户</a-tag>
+            <span v-if="record.userRole === 'admin'" class="tag tag--blue">管理员</span>
+            <span v-else class="tag">普通用户</span>
           </template>
 
           <!-- 简介渲染 -->
@@ -287,63 +286,3 @@ onMounted(() => {
   </div>
 </template>
 
-<style scoped>
-.user-manage-page {
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-}
-
-.action-btn {
-  border-radius: 99px;
-  background: linear-gradient(135deg, #1890ff 0%, #0050b3 100%);
-  border: none;
-  box-shadow: 0 4px 10px rgba(24, 144, 255, 0.2);
-}
-
-.action-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(24, 144, 255, 0.3);
-}
-
-.table-container {
-  background: transparent;
-}
-
-.custom-table :deep(.ant-table-thead > tr > th) {
-  font-weight: 600;
-  color: #262626;
-}
-
-.glow-avatar-wrapper {
-  padding: 2px;
-}
-
-.role-tag {
-  border-radius: 4px;
-  font-weight: 500;
-  padding: 2px 8px;
-}
-
-.edit-link {
-  color: #1890ff;
-}
-
-.edit-link:hover {
-  color: #40a9ff;
-}
-
-.delete-link {
-  color: #ff4d4f;
-}
-
-.delete-link:hover {
-  color: #ff7875;
-}
-
-@media (max-width: 768px) {
-  .action-btn {
-    width: 100%;
-  }
-}
-</style>

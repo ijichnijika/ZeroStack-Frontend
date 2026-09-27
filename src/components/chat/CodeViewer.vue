@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted, nextTick, onMounted } from 'vue'
 import hljs from 'highlight.js'
-import 'highlight.js/styles/tokyo-night-dark.css'
 import {
   FolderOutlined,
   FolderOpenOutlined,
@@ -17,7 +16,7 @@ import {
   MenuUnfoldOutlined,
   RightOutlined,
   CodeOutlined,
-  FileTextOutlined,
+  FileOutlined,
   AlignLeftOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
@@ -109,7 +108,13 @@ const isSidebarCollapsed = ref(false)
 const isFullscreen = ref(false)
 const isWordWrap = ref(false)
 const fontSize = ref(13)
-const lineHeight = computed(() => (fontSize.value <= 13 ? 22 : 24))
+const lineHeight = computed(() => {
+  if (fontSize.value <= 12) return 20
+  if (fontSize.value === 13) return 22
+  if (fontSize.value === 14) return 24
+  if (fontSize.value === 15) return 25
+  return 26
+})
 
 const increaseFontSize = () => {
   if (fontSize.value < 16) fontSize.value += 1
@@ -178,8 +183,8 @@ const startTypewriter = (targetText: string) => {
   isTyping.value = true
   let currentIndex = 0
   const total = targetText.length
-  // 弹性自适应步长：约 200 个 tick（20ms/tick，约 4 秒），保障平稳可读
-  const step = Math.max(2, Math.ceil(total / 200))
+  // 约 80 个 tick（50ms/tick，约 4 秒）：每个 tick 都要整段重新高亮，间隔过密会掉帧
+  const step = Math.max(4, Math.ceil(total / 80))
 
   typewriterTimer = setInterval(() => {
     currentIndex = Math.min(total, currentIndex + step)
@@ -195,7 +200,7 @@ const startTypewriter = (targetText: string) => {
       stopTypewriter()
       isTyping.value = false
     }
-  }, 20)
+  }, 50)
 }
 
 watch(
@@ -517,29 +522,35 @@ function getFileIconType(fileName: string): string {
   if (['svg', 'png', 'jpg', 'ico'].includes(ext)) return 'image'
   return 'file'
 }
+
+const BADGE_TEXT: Record<string, string> = {
+  vue: 'VUE',
+  ts: 'TS',
+  js: 'JS',
+  json: 'JSON',
+  html: 'HTML',
+  css: 'CSS',
+  md: 'MD',
+}
+
+const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ?? ''
 </script>
 
 <template>
-  <div class="code-ide-container" :class="{ 'is-fullscreen': isFullscreen }">
-    <!-- Empty state -->
-    <div v-if="files.size === 0" class="empty-state">
-      <div class="empty-icon-card">
-        <CodeOutlined class="empty-icon" />
-      </div>
-      <div class="empty-title">暂无项目代码</div>
-      <p class="empty-desc">AI 生成的源码文件将在此以 IDE 视图实时同步与展示</p>
+  <div class="code-ide" :class="{ 'is-fullscreen': isFullscreen }">
+    <div v-if="files.size === 0" class="code-empty">
+      <CodeOutlined class="code-empty-icon" />
+      <p class="code-empty-title">还没有源码</p>
+      <p class="code-empty-desc">AI 写入的文件会实时出现在这里。</p>
     </div>
 
     <template v-else>
-      <!-- Left: File Explorer Sidebar -->
       <aside class="ide-sidebar" :class="{ collapsed: isSidebarCollapsed }">
-        <div class="sidebar-header">
-          <div class="header-title">
-            <span class="explorer-label">EXPLORER</span>
-            <span class="file-count-badge">{{ files.size }}</span>
-          </div>
+        <div class="sidebar-head">
+          <span class="sidebar-title">文件 <span class="tabular">{{ files.size }}</span></span>
           <div class="sidebar-actions">
             <button
+              type="button"
               class="icon-btn"
               :title="expandedDirs.size > 0 ? '全部折叠' : '全部展开'"
               @click="toggleAllDirs"
@@ -547,278 +558,152 @@ function getFileIconType(fileName: string): string {
               <FolderOpenOutlined v-if="expandedDirs.size > 0" />
               <FolderOutlined v-else />
             </button>
-            <button
-              class="icon-btn"
-              title="收起侧边栏"
-              @click="isSidebarCollapsed = true"
-            >
+            <button type="button" class="icon-btn" title="收起文件栏" @click="isSidebarCollapsed = true">
               <MenuFoldOutlined />
             </button>
           </div>
         </div>
 
-        <!-- File search filter -->
         <div class="sidebar-search">
-          <div class="search-input-wrapper">
-            <SearchOutlined class="search-icon" />
-            <input
-              v-model="fileSearchQuery"
-              type="text"
-              placeholder="搜索文件..."
-              class="search-input"
-            />
-            <button
-              v-if="fileSearchQuery"
-              class="search-clear-btn"
-              @click="fileSearchQuery = ''"
-            >
-              <CloseOutlined />
-            </button>
-          </div>
+          <SearchOutlined class="search-icon" />
+          <input v-model="fileSearchQuery" type="text" placeholder="搜索文件" class="search-input" aria-label="搜索文件" />
+          <button v-if="fileSearchQuery" type="button" class="icon-btn search-clear" title="清空" @click="fileSearchQuery = ''">
+            <CloseOutlined />
+          </button>
         </div>
 
-        <!-- File tree list -->
         <div class="sidebar-tree">
-          <div v-if="fileTree.length === 0" class="no-match-tip">
-            未匹配到相关文件
-          </div>
-
+          <p v-if="fileTree.length === 0" class="no-match">没有匹配的文件</p>
           <template v-else>
-            <!-- Pre-order DFS Tree Rendering (supports arbitrary directory depth) -->
-            <div
-              v-for="node in visibleTreeNodes"
-              :key="node.key"
-              class="tree-node-wrapper"
-            >
-              <!-- Folder item -->
-              <div
+            <template v-for="node in visibleTreeNodes" :key="node.key">
+              <button
                 v-if="!node.isLeaf"
-                class="tree-item folder-item"
+                type="button"
+                class="tree-item is-folder"
                 :style="{ paddingLeft: `${node.depth * 14 + 10}px` }"
+                :aria-expanded="expandedDirs.has(node.key)"
                 @click="toggleDir(node.key)"
               >
-                <span class="chevron-icon" :class="{ open: expandedDirs.has(node.key) }">
-                  <RightOutlined />
-                </span>
-                <FolderOpenOutlined v-if="expandedDirs.has(node.key)" class="folder-icon open" />
-                <FolderOutlined v-else class="folder-icon" />
-                <span class="node-name folder-name">{{ node.name }}</span>
-              </div>
-
-              <!-- File item -->
-              <div
+                <RightOutlined class="chevron" :class="{ open: expandedDirs.has(node.key) }" />
+                <span class="node-name">{{ node.name }}</span>
+              </button>
+              <button
                 v-else
-                class="tree-item file-item"
+                type="button"
+                class="tree-item is-file"
                 :class="{ active: node.path === currentFile }"
-                :style="{ paddingLeft: `${node.depth * 14 + 20}px` }"
+                :style="{ paddingLeft: `${node.depth * 14 + 24}px` }"
                 @click="selectFile(node.path!)"
               >
-                <span class="file-icon-badge" :class="`icon-${getFileIconType(node.name)}`">
-                  <span v-if="getFileIconType(node.name) === 'vue'" class="icon-text">V</span>
-                  <span v-else-if="getFileIconType(node.name) === 'ts'" class="icon-text">TS</span>
-                  <span v-else-if="getFileIconType(node.name) === 'js'" class="icon-text">JS</span>
-                  <span v-else-if="getFileIconType(node.name) === 'json'" class="icon-text">{}</span>
-                  <span v-else-if="getFileIconType(node.name) === 'css'" class="icon-text">#</span>
-                  <span v-else-if="getFileIconType(node.name) === 'html'" class="icon-text">&lt;&gt;</span>
-                  <FileTextOutlined v-else />
-                </span>
-                <span class="node-name file-name">{{ node.name }}</span>
-                <span
-                  v-if="streaming && node.path === currentFile"
-                  class="streaming-pulse-dot"
-                  title="正在接收流式代码"
-                ></span>
-              </div>
-            </div>
+                <span v-if="badgeText(node.name)" class="file-badge" :class="`badge-${getFileIconType(node.name)}`">{{ badgeText(node.name) }}</span>
+                <FileOutlined v-else class="file-icon" />
+                <span class="node-name">{{ node.name }}</span>
+                <span v-if="streaming && node.path === currentFile" class="live-dot" title="正在写入"></span>
+              </button>
+            </template>
           </template>
         </div>
       </aside>
 
-      <!-- Main Editor Workspace -->
-      <main class="ide-workspace">
-        <!-- Top Tab Bar & Actions -->
-        <header class="workspace-header">
-          <div ref="tabsScrollContainer" class="tabs-scroll-area">
+      <main class="ide-main">
+        <header class="ide-head">
+          <div ref="tabsScrollContainer" class="tabs">
             <button
               v-if="isSidebarCollapsed"
-              class="unfold-sidebar-btn"
-              title="展开侧边栏"
+              type="button"
+              class="icon-btn unfold-btn"
+              title="展开文件栏"
               @click="isSidebarCollapsed = false"
             >
               <MenuUnfoldOutlined />
             </button>
-
-            <!-- File Tabs -->
             <div
               v-for="tabPath in openTabs"
               :key="tabPath"
               class="editor-tab"
               :class="{ active: tabPath === currentFile }"
+              role="button"
+              tabindex="0"
               @click="selectFile(tabPath)"
+              @keydown.enter="selectFile(tabPath)"
             >
-              <span class="tab-icon" :class="`icon-${getFileIconType(tabPath.split('/').pop() || '')}`">
-                <span v-if="getFileIconType(tabPath.split('/').pop() || '') === 'vue'" class="icon-text">V</span>
-                <span v-else-if="getFileIconType(tabPath.split('/').pop() || '') === 'ts'" class="icon-text">TS</span>
-                <span v-else-if="getFileIconType(tabPath.split('/').pop() || '') === 'js'" class="icon-text">JS</span>
-                <span v-else-if="getFileIconType(tabPath.split('/').pop() || '') === 'json'" class="icon-text">{}</span>
-                <span v-else-if="getFileIconType(tabPath.split('/').pop() || '') === 'css'" class="icon-text">#</span>
-                <span v-else-if="getFileIconType(tabPath.split('/').pop() || '') === 'html'" class="icon-text">&lt;&gt;</span>
-                <FileTextOutlined v-else />
-              </span>
               <span class="tab-title">{{ tabPath.split('/').pop() }}</span>
-              <span
-                v-if="streaming && tabPath === currentFile"
-                class="tab-streaming-dot"
-              ></span>
-              <button
-                class="tab-close-btn"
-                title="关闭标签"
-                @click="closeTab(tabPath, $event)"
-              >
+              <span v-if="streaming && tabPath === currentFile" class="live-dot"></span>
+              <button type="button" class="tab-close" title="关闭" @click="closeTab(tabPath, $event)">
                 <CloseOutlined />
               </button>
             </div>
           </div>
 
-          <!-- Actions Toolbar -->
-          <div class="toolbar-actions">
-            <!-- Fast Forward Button during typing -->
-            <button
-              v-if="isTyping"
-              class="action-btn action-fast-forward"
-              title="跳过打字动画直接展示全量源码"
-              @click="fastForward"
-            >
+          <div class="ide-tools">
+            <button v-if="isTyping" type="button" class="tool-btn is-text" title="直接显示完整代码" @click="fastForward">
               <FastForwardOutlined />
-              <span class="btn-text">跳过动画</span>
+              <span>跳过动画</span>
             </button>
-
-            <!-- Font zoom -->
-            <button
-              class="action-btn"
-              :disabled="fontSize <= 12"
-              title="缩小字体"
-              @click="decreaseFontSize"
-            >
+            <button type="button" class="tool-btn" :disabled="fontSize <= 12" title="缩小字号" @click="decreaseFontSize">
               <ZoomOutOutlined />
             </button>
-            <span class="font-size-indicator" title="当前字号">{{ fontSize }}px</span>
-            <button
-              class="action-btn"
-              :disabled="fontSize >= 16"
-              title="放大字体"
-              @click="increaseFontSize"
-            >
+            <span class="font-size tabular">{{ fontSize }}</span>
+            <button type="button" class="tool-btn" :disabled="fontSize >= 16" title="放大字号" @click="increaseFontSize">
               <ZoomInOutlined />
             </button>
-
-            <!-- Word wrap toggle -->
             <button
-              class="action-btn"
+              type="button"
+              class="tool-btn"
               :class="{ active: isWordWrap }"
-              :title="isWordWrap ? '取消自动换行 (显示行号)' : '开启自动换行 (不显示行号)'"
+              :aria-pressed="isWordWrap"
+              :title="isWordWrap ? '取消自动换行' : '自动换行'"
               @click="isWordWrap = !isWordWrap"
             >
               <AlignLeftOutlined />
             </button>
-
-            <!-- Copy button -->
-            <button
-              class="action-btn"
-              :class="{ success: copied }"
-              :title="copied ? '已复制' : '复制代码'"
-              @click="copyCode"
-            >
+            <button type="button" class="tool-btn" :class="{ success: copied }" :title="copied ? '已复制' : '复制代码'" @click="copyCode">
               <CheckOutlined v-if="copied" />
               <CopyOutlined v-else />
-              <span v-if="copied" class="btn-text">已复制</span>
             </button>
-
-            <!-- Download button -->
-            <button
-              class="action-btn"
-              title="下载此文件"
-              @click="downloadFile"
-            >
+            <button type="button" class="tool-btn" title="下载此文件" @click="downloadFile">
               <DownloadOutlined />
             </button>
-
-            <!-- Fullscreen toggle -->
-            <button
-              class="action-btn"
-              :title="isFullscreen ? '退出全屏 (Esc)' : '全屏查看'"
-              @click="toggleFullscreen"
-            >
+            <button type="button" class="tool-btn" :title="isFullscreen ? '退出全屏 (Esc)' : '全屏'" @click="toggleFullscreen">
               <FullscreenExitOutlined v-if="isFullscreen" />
               <FullscreenOutlined v-else />
             </button>
           </div>
         </header>
 
-        <!-- Breadcrumb Bar -->
-        <nav class="breadcrumb-bar" aria-label="文件路径">
-          <div class="breadcrumb-path">
-            <span class="crumb-root">ZeroStack</span>
-            <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
-              <span class="crumb-separator">/</span>
-              <span class="crumb-item" :class="{ 'crumb-active': idx === breadcrumbSegments.length - 1 }">
-                {{ seg }}
-              </span>
-            </template>
-          </div>
-
-          <!-- Streaming status pill -->
-          <div v-if="streaming" class="streaming-status-pill">
-            <span class="pill-dot"></span>
-            <span class="pill-text">AI 正在流式生成中...</span>
-          </div>
+        <nav class="crumbs" aria-label="文件路径">
+          <template v-for="(seg, idx) in breadcrumbSegments" :key="idx">
+            <span v-if="idx > 0" class="crumb-sep">/</span>
+            <span class="crumb" :class="{ 'is-last': idx === breadcrumbSegments.length - 1 }">{{ seg }}</span>
+          </template>
+          <span v-if="streaming" class="crumb-live">
+            <span class="live-dot"></span>
+            正在写入
+          </span>
         </nav>
 
-        <!-- Code Content Area -->
-        <div
-          ref="scrollContainer"
-          class="code-viewport"
-          :class="{ 'word-wrap': isWordWrap }"
-        >
-          <div class="code-flow-grid">
-            <!-- Line numbers gutter (换行模式下隐藏，防止折行与固定高度行号错位) -->
-            <div v-if="!isWordWrap" class="line-gutter" aria-hidden="true">
+        <div ref="scrollContainer" class="code-scroll" :class="{ 'word-wrap': isWordWrap }">
+          <div
+            class="code-grid"
+            :style="{
+              '--code-font-size': `${fontSize}px`,
+              '--code-line-height': `${lineHeight}px`,
+            }"
+          >
+            <div v-if="!isWordWrap" class="gutter" aria-hidden="true">
               <span
                 v-for="(_, idx) in codeLines"
                 :key="idx"
-                class="gutter-number"
-                :style="{ height: `${lineHeight}px`, lineHeight: `${lineHeight}px` }"
-              >
-                {{ idx + 1 }}
-              </span>
+                class="gutter-num"
+              >{{ idx + 1 }}</span>
             </div>
-
-            <!-- Code body -->
-            <pre class="code-pre"><code class="hljs" :style="{ fontSize: `${fontSize}px`, lineHeight: `${lineHeight}px` }" v-html="highlightedCode"></code><span v-if="isTyping" class="glow-cursor"></span></pre>
+            <pre class="code-pre"><code class="hljs" v-html="highlightedCode"></code><span v-if="isTyping" class="caret"></span></pre>
           </div>
         </div>
 
-        <!-- IDE Status Bar -->
-        <footer class="ide-status-bar">
-          <div class="status-left">
-            <span class="status-item file-path-item">{{ currentFile }}</span>
-            <span class="status-divider">·</span>
-            <span class="status-item">{{ fileStats.lines }} 行</span>
-            <span class="status-divider">·</span>
-            <span class="status-item">{{ fileStats.size }}</span>
-            <span class="status-divider">·</span>
-            <span class="status-item encoding-item">UTF-8</span>
-          </div>
-          <div class="status-right">
-            <span class="status-item">Spaces: 2</span>
-            <span class="status-divider">·</span>
-            <span class="status-item lang-tag">{{ getDisplayLanguage(currentFile || '') }}</span>
-            <span class="status-divider">·</span>
-            <span class="status-item status-live" :class="{ active: streaming }">
-              <span class="live-dot"></span>
-              {{ streaming ? '正在编写' : '代码就绪' }}
-            </span>
-          </div>
+        <footer class="ide-status">
+          <span class="tabular">{{ fileStats.lines }} 行 · {{ fileStats.size }}</span>
+          <span>{{ getDisplayLanguage(currentFile || '') }} · UTF-8</span>
         </footer>
       </main>
     </template>
@@ -826,789 +711,532 @@ function getFileIconType(fileName: string): string {
 </template>
 
 <style scoped>
-.code-ide-container {
-  width: 100%;
-  height: 100%;
+.code-ide {
   display: flex;
-  position: relative;
-  overflow: hidden;
-  border-radius: 8px;
-  background: #16161e;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #c0caf5;
-}
-
-.code-ide-container.is-fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  z-index: 9999 !important;
-  border-radius: 0 !important;
-  border: none !important;
-}
-
-/* Empty state */
-.empty-state {
   width: 100%;
   height: 100%;
+  overflow: hidden;
+  background: var(--sheet);
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  color: var(--ink);
+}
+
+.code-ide.is-fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  border: 0;
+  border-radius: 0;
+}
+
+.code-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #16161e;
-  color: #7aa2f7;
-  gap: 14px;
+  gap: 6px;
+  width: 100%;
+  color: var(--ink-3);
 }
 
-.empty-icon-card {
-  width: 64px;
-  height: 64px;
-  border-radius: 16px;
-  background: rgba(122, 162, 247, 0.08);
-  border: 1px solid rgba(122, 162, 247, 0.2);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.code-empty-icon {
+  font-size: 28px;
+  margin-bottom: 6px;
 }
 
-.empty-icon {
-  font-size: 30px;
-  color: #7aa2f7;
+.code-empty-title {
+  font-weight: 700;
+  color: var(--ink);
 }
 
-.empty-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #c0caf5;
-}
-
-.empty-desc {
+.code-empty-desc {
   font-size: 13px;
-  color: #565f89;
-  margin: 0;
 }
 
-/* Left Sidebar (Explorer) */
+/* ---------- sidebar ---------- */
 .ide-sidebar {
-  width: 230px;
-  min-width: 230px;
-  background: #13141c;
-  border-right: 1px solid rgba(255, 255, 255, 0.07);
   display: flex;
   flex-direction: column;
-  transition: width 0.2s ease, min-width 0.2s ease;
-  overflow: hidden;
-  user-select: none;
+  width: 236px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--rule);
+  background: var(--paper);
 }
 
 .ide-sidebar.collapsed {
-  width: 0;
-  min-width: 0;
-  border-right: none;
+  display: none;
 }
 
-.sidebar-header {
-  height: 38px;
+.sidebar-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  background: #13141c;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  height: 42px;
+  padding: 0 8px 0 14px;
+  border-bottom: 1px solid var(--rule);
 }
 
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.explorer-label {
-  font-size: 11px;
+.sidebar-title {
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.8px;
-  color: #787c99;
+  color: var(--ink-2);
 }
 
-.file-count-badge {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #9aa5ce;
+.sidebar-title .tabular {
+  margin-left: 4px;
+  padding: 1px 7px;
+  border-radius: var(--pill);
+  background: var(--pink);
+  color: var(--ink);
 }
 
 .sidebar-actions {
   display: flex;
-  align-items: center;
-  gap: 4px;
 }
 
-.icon-btn {
+.icon-btn,
+.tool-btn {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 6px;
   background: transparent;
-  border: none;
-  color: #787c99;
-  padding: 4px;
-  border-radius: 4px;
+  color: var(--ink-2);
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 13px;
+  transition: background-color var(--t-fast) var(--ease-out);
+}
+
+.icon-btn:hover,
+.tool-btn:hover:not(:disabled) {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.tool-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tool-btn.active {
+  background: var(--ink);
+  color: #fff;
+}
+
+.tool-btn.success {
+  color: var(--success);
+}
+
+.tool-btn.is-text {
+  display: inline-flex;
+  gap: 6px;
+  width: auto;
+  padding: 0 10px;
+  background: var(--yellow);
+  color: var(--ink);
   font-size: 12px;
-  transition: all 0.15s ease;
+  font-weight: 600;
 }
 
-.icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #c0caf5;
-}
-
-/* Sidebar Search */
 .sidebar-search {
-  padding: 8px 10px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.search-input-wrapper {
   position: relative;
   display: flex;
   align-items: center;
+  margin: 10px;
 }
 
 .search-icon {
   position: absolute;
-  left: 8px;
-  color: #565f89;
+  left: 10px;
   font-size: 12px;
+  color: var(--ink-3);
 }
 
 .search-input {
   width: 100%;
-  height: 26px;
-  padding: 0 24px 0 26px;
-  background: #1a1b26;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 4px;
-  color: #c0caf5;
-  font-size: 12px;
+  height: 30px;
+  padding: 0 28px 0 30px;
+  border: 1px solid var(--rule);
+  border-radius: var(--pill);
   outline: none;
-  transition: border-color 0.15s;
+  background: var(--sheet);
+  font-size: 12px;
 }
 
 .search-input:focus {
-  border-color: #7aa2f7;
+  border-color: var(--ink);
 }
 
-.search-input::placeholder {
-  color: #565f89;
-}
-
-.search-clear-btn {
+.search-clear {
   position: absolute;
-  right: 6px;
-  background: transparent;
-  border: none;
-  color: #565f89;
+  right: 2px;
+  width: 24px;
+  height: 24px;
   font-size: 10px;
-  cursor: pointer;
-  padding: 2px;
 }
 
-.search-clear-btn:hover {
-  color: #c0caf5;
-}
-
-/* Sidebar Tree */
 .sidebar-tree {
   flex: 1;
   overflow-y: auto;
-  padding: 6px 0;
+  padding: 2px 6px 12px;
 }
 
-.no-match-tip {
-  padding: 16px 12px;
+.no-match {
+  padding: 16px 10px;
   font-size: 12px;
-  color: #565f89;
-  text-align: center;
+  color: var(--ink-3);
 }
 
 .tree-item {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
+  width: 100%;
   height: 28px;
-  cursor: pointer;
-  border-radius: 4px;
-  margin: 1px 6px;
   padding-right: 8px;
-  transition: background 0.15s ease, color 0.15s ease;
-  position: relative;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink-2);
+  cursor: pointer;
 }
 
 .tree-item:hover {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--paper-2);
+  color: var(--ink);
 }
 
 .tree-item.active {
-  background: rgba(122, 162, 247, 0.15);
-  color: #7dcfff;
+  background: var(--yellow);
+  color: var(--ink);
+  font-weight: 600;
 }
 
-.chevron-icon {
+.is-folder {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.chevron {
   font-size: 9px;
-  color: #565f89;
-  transition: transform 0.15s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 12px;
+  transition: transform var(--t-fast) var(--ease-out);
 }
 
-.chevron-icon.open {
+.chevron.open {
   transform: rotate(90deg);
 }
 
-.folder-icon {
-  color: #e0af68;
-  font-size: 13px;
-}
-
-.folder-icon.open {
-  color: #ff9e64;
-}
-
 .node-name {
-  font-size: 12px;
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.folder-name {
-  color: #9aa5ce;
-  font-weight: 500;
-}
-
-.file-name {
-  color: #a9b1d6;
-}
-
-.tree-item.active .file-name {
-  color: #7dcfff;
-  font-weight: 500;
-}
-
-/* File Icon Badges */
-.file-icon-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 10px;
-  font-weight: 700;
-  width: 16px;
-  height: 16px;
+.file-badge {
+  display: grid;
+  place-items: center;
+  min-width: 34px;
+  height: 17px;
+  padding: 0 4px;
   border-radius: 3px;
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-
-.icon-text {
-  line-height: 1;
-  font-family: Consolas, Monaco, monospace;
-  white-space: nowrap;
-  letter-spacing: -0.5px;
-  user-select: none;
-}
-
-.icon-vue {
-  color: #41b883;
-}
-
-.icon-ts {
-  color: #3178c6;
-}
-
-.icon-js {
-  color: #f7df1e;
-}
-
-.icon-json {
-  color: #eab308;
-}
-
-.icon-css {
-  color: #38bdf8;
-}
-
-.icon-html {
-  color: #f97316;
-}
-
-.icon-md {
-  color: #7aa2f7;
-}
-
-.icon-image {
-  color: #bb9af7;
-}
-
-.icon-file {
-  color: #9aa5ce;
-}
-
-.streaming-pulse-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 8px #38bdf8;
-  margin-left: auto;
-  animation: pulse-stream 1.2s infinite ease-in-out;
-}
-
-@keyframes pulse-stream {
-  0%, 100% { transform: scale(0.9); opacity: 0.6; }
-  50% { transform: scale(1.3); opacity: 1; }
-}
-
-/* Main Workspace */
-.ide-workspace {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  background: #1a1b26;
-  overflow: hidden;
-}
-
-/* Workspace Header & Tabs */
-.workspace-header {
-  height: 38px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #16161e;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-  flex-shrink: 0;
-}
-
-.tabs-scroll-area {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  height: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-  scrollbar-width: none;
-  scroll-behavior: smooth;
-}
-
-.tabs-scroll-area::-webkit-scrollbar {
-  display: none;
-}
-
-.unfold-sidebar-btn {
-  background: transparent;
-  border: none;
-  color: #787c99;
-  padding: 0 12px;
-  height: 100%;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  transition: color 0.15s ease, background 0.15s ease;
-}
-
-.unfold-sidebar-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #c0caf5;
-}
-
-.editor-tab {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 100%;
-  padding: 0 12px;
-  background: #16161e;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  border-top: 2px solid transparent;
-  color: #787c99;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-}
-
-.editor-tab:hover {
-  background: #1a1b26;
-  color: #a9b1d6;
-}
-
-.editor-tab.active {
-  background: #1a1b26;
-  color: #c0caf5;
-  border-top-color: #7aa2f7;
-  font-weight: 500;
-}
-
-.tab-icon {
-  font-size: 11px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.tab-title {
-  max-width: 140px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.tab-streaming-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 6px #38bdf8;
-  animation: pulse-stream 1.2s infinite ease-in-out;
-}
-
-.tab-close-btn {
-  background: transparent;
-  border: none;
-  color: #565f89;
-  padding: 2px;
-  border-radius: 3px;
+  background: var(--paper-3);
+  font-family: var(--font-body);
   font-size: 10px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s;
-}
-
-.tab-close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #c0caf5;
-}
-
-/* Toolbar Actions */
-.toolbar-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0 10px;
-  flex-shrink: 0;
-  background: #16161e;
-  border-left: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow: -6px 0 12px rgba(0, 0, 0, 0.3);
-  z-index: 2;
-}
-
-.action-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 26px;
-  padding: 0 8px;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: 4px;
-  color: #787c99;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.action-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #c0caf5;
-}
-
-.action-btn.active {
-  background: rgba(122, 162, 247, 0.15);
-  color: #7aa2f7;
-}
-
-.action-btn.success {
-  background: rgba(65, 184, 131, 0.15);
-  color: #41b883;
-}
-
-.action-fast-forward {
-  background: rgba(56, 189, 248, 0.12);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-  color: #38bdf8;
-  font-weight: 500;
-  animation: fastforward-pulse 2s infinite ease-in-out;
-}
-
-.action-fast-forward:hover {
-  background: rgba(56, 189, 248, 0.25);
-  color: #e0f2fe;
-}
-
-@keyframes fastforward-pulse {
-  0%, 100% { box-shadow: 0 0 0 rgba(56, 189, 248, 0); }
-  50% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.35); }
-}
-
-.btn-text {
-  font-size: 11px;
-}
-
-/* Breadcrumb bar */
-.breadcrumb-bar {
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  background: #181924;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-  font-size: 11px;
-  color: #565f89;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--ink);
   flex-shrink: 0;
 }
 
-.breadcrumb-path {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.crumb-root {
-  color: #7aa2f7;
-  font-weight: 600;
-}
-
-.crumb-separator {
-  color: #3b4261;
-}
-
-.crumb-item {
-  color: #787c99;
-}
-
-.crumb-item.crumb-active {
-  color: #c0caf5;
-  font-weight: 500;
-}
-
-.streaming-status-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
-  border-radius: 12px;
-  background: rgba(56, 189, 248, 0.1);
-  color: #38bdf8;
-  font-size: 11px;
-}
-
-.pill-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #38bdf8;
-  box-shadow: 0 0 6px #38bdf8;
-  animation: pulse-stream 1s infinite;
-}
-
-/* Code Viewport */
-.code-viewport {
-  flex: 1;
-  overflow: auto;
-  position: relative;
-  background: #1a1b26;
-}
-
-.code-flow-grid {
-  display: flex;
-  min-height: 100%;
-}
-
-/* Line numbers */
-.line-gutter {
-  display: flex;
-  flex-direction: column;
-  padding: 14px 0;
-  text-align: right;
-  user-select: none;
-  flex-shrink: 0;
-  background: #181924;
-  border-right: 1px solid rgba(255, 255, 255, 0.04);
-  position: sticky;
-  left: 0;
-  z-index: 2;
-  box-sizing: border-box;
-}
-
-.gutter-number {
-  display: block;
-  height: 22px;
-  line-height: 22px;
-  padding: 0 12px 0 16px;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, Consolas, monospace;
-  font-size: 12px;
-  color: #414868;
-  min-width: 3.2em;
-  box-sizing: border-box;
-}
-
-/* Code pre & code */
-.code-pre {
-  margin: 0;
-  padding: 14px 18px;
-  background: transparent;
-  flex: 1;
-  min-width: 0;
-  overflow: visible;
-}
-
-.font-size-indicator {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
-  color: #7aa2f7;
-  padding: 0 2px;
-  user-select: none;
-}
-
-.code-pre code.hljs,
-.code-pre code {
-  display: block;
-  font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Monaco, Consolas, monospace;
+.file-icon {
+  width: 34px;
   font-size: 13px;
-  line-height: 22px;
-  background: transparent !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  white-space: pre;
-  word-break: normal;
-  word-wrap: normal;
-  font-feature-settings: 'liga' 1, 'calt' 1;
-  tab-size: 2;
-}
-
-.code-viewport.word-wrap .code-pre code.hljs,
-.code-viewport.word-wrap .code-pre code {
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-/* Typewriter glow cursor */
-.glow-cursor {
-  display: inline-block;
-  width: 8px;
-  height: 1.2em;
-  background: #38bdf8;
-  vertical-align: text-bottom;
-  margin-left: 2px;
-  border-radius: 2px;
-  box-shadow: 0 0 10px rgba(56, 189, 248, 0.8);
-  animation: cursor-blink 0.8s infinite;
-}
-
-@keyframes cursor-blink {
-  0%, 49% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-/* IDE Bottom Status Bar */
-.ide-status-bar {
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 12px;
-  background: #13141c;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 11px;
-  color: #565f89;
+  color: var(--ink-3);
   flex-shrink: 0;
-  user-select: none;
 }
 
-.status-left,
-.status-right {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.badge-vue {
+  background: var(--op-blue-yellow);
+  color: #fff;
 }
 
-.status-item {
-  color: #787c99;
+.badge-ts {
+  background: var(--blue);
+  color: #fff;
 }
 
-.status-divider {
-  color: #3b4261;
+.badge-js,
+.badge-json {
+  background: var(--yellow);
 }
 
-.file-path-item {
-  max-width: 220px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: Consolas, monospace;
-  color: #9aa5ce;
+.badge-html {
+  background: var(--pink);
 }
 
-.lang-tag {
-  color: #7aa2f7;
-  font-weight: 600;
-}
-
-.status-live {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  color: #41b883;
-}
-
-.status-live.active {
-  color: #38bdf8;
+.badge-css {
+  background: var(--op-pink-blue);
+  color: #fff;
 }
 
 .live-dot {
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: currentColor;
-  box-shadow: 0 0 6px currentColor;
+  background: var(--pink);
+  flex-shrink: 0;
+  animation: live-pulse 1.1s var(--ease-in-out) infinite;
 }
 
-/* Custom modern scrollbars */
-.ide-sidebar::-webkit-scrollbar,
-.code-viewport::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+@keyframes live-pulse {
+  50% {
+    opacity: 0.35;
+  }
 }
 
-.ide-sidebar::-webkit-scrollbar-track,
-.code-viewport::-webkit-scrollbar-track {
+/* ---------- main ---------- */
+.ide-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+
+.ide-head {
+  display: flex;
+  align-items: stretch;
+  height: 42px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.tabs {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.unfold-btn {
+  align-self: center;
+  margin: 0 4px 0 8px;
+}
+
+.editor-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 14px;
+  border-right: 1px solid var(--rule);
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.editor-tab:hover {
+  color: var(--ink);
+}
+
+.editor-tab.active {
+  color: var(--ink);
+  font-weight: 600;
+  background: var(--sheet);
+}
+
+.editor-tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 3px;
+  background: var(--pink);
+}
+
+.tab-close {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 9px;
+  color: var(--ink-3);
+  cursor: pointer;
+  opacity: 0;
+}
+
+.editor-tab:hover .tab-close,
+.editor-tab.active .tab-close {
+  opacity: 1;
+}
+
+.tab-close:hover {
+  background: var(--paper-2);
+  color: var(--ink);
+}
+
+.ide-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 8px;
+  flex-shrink: 0;
+  border-left: 1px solid var(--rule);
+}
+
+.font-size {
+  min-width: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.crumbs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 16px;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-3);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.crumb.is-last {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.crumb-sep {
+  color: var(--ink-4);
+}
+
+.crumb-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.code-scroll {
+  flex: 1;
+  overflow: auto;
+  background: var(--sheet);
+}
+
+.code-grid {
+  display: flex;
+  min-width: max-content;
+  min-height: 100%;
+}
+
+.word-wrap .code-grid {
+  min-width: 0;
+}
+
+.gutter {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 12px 40px 14px;
+  background: var(--paper);
+  border-right: 1px solid var(--rule);
+  text-align: right;
+  user-select: none;
+  font-family: var(--font-mono);
+  font-size: calc(var(--code-font-size) - 1px);
+  line-height: var(--code-line-height);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  box-sizing: border-box;
+}
+
+.gutter-num {
+  display: block;
+  height: var(--code-line-height);
+  line-height: var(--code-line-height);
+  box-sizing: border-box;
+}
+
+.code-pre {
+  flex: 1;
+  margin: 0;
+  padding: 14px 20px 40px;
+  font-family: var(--font-mono);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  tab-size: 2;
+  box-sizing: border-box;
+}
+
+.code-pre code {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  vertical-align: baseline;
+}
+
+.code-pre code.hljs {
+  padding: 0;
+  margin: 0;
   background: transparent;
 }
 
-.ide-sidebar::-webkit-scrollbar-thumb,
-.code-viewport::-webkit-scrollbar-thumb {
-  background: #292e42;
-  border-radius: 4px;
+.word-wrap .code-pre {
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
-.ide-sidebar::-webkit-scrollbar-thumb:hover,
-.code-viewport::-webkit-scrollbar-thumb:hover {
-  background: #3b4261;
+.caret {
+  display: inline-block;
+  width: 8px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.15em;
+  background: var(--pink);
+  animation: live-pulse 0.9s steps(2) infinite;
+}
+
+.ide-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  height: 28px;
+  padding: 0 16px;
+  align-items: center;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+
+@media (max-width: 760px) {
+  .ide-sidebar {
+    display: none;
+  }
 }
 </style>
