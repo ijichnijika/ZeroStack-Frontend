@@ -106,7 +106,12 @@ onMounted(() => {
         class="ink-table"
       >
         <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'createTime'">
+          <template v-if="column.key === 'messageType'">
+            <span v-if="record.messageType === 'user'" class="tag tag--yellow">用户</span>
+            <span v-else-if="record.messageType === 'ai'" class="tag tag--blue">AI</span>
+            <span v-else class="tag">{{ record.messageType }}</span>
+          </template>
+          <template v-else-if="column.key === 'createTime'">
             <span>{{ formatDate(record.createTime) }}</span>
           </template>
         </template>

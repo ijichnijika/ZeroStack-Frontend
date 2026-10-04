@@ -1,5 +1,13 @@
 <script setup lang="ts">
+/**
+ * 身份认证页面通用双栏外壳组件
+ * 左侧展示品牌视觉与标语，右侧承载登录/注册表单，并支持展示未登录前暂存的提示词。
+ */
 import { ArrowLeftOutlined } from '@ant-design/icons-vue'
+import { PENDING_PROMPT_KEY } from '@/components/home/presets'
+
+// 读取首页未登录提交时暂存的提示词，便于在表单顶部回显当前上下文
+const pending = sessionStorage.getItem(PENDING_PROMPT_KEY)
 
 defineProps<{
   title: string
@@ -18,8 +26,8 @@ defineProps<{
         <span class="poster-word">ZeroStack</span>
       </div>
       <p class="poster-line">
-        说一句话，<br />
-        网站就上线。
+        一句话，<br />
+        做出能上线的网站。
       </p>
       <p class="poster-foot">HTML 单页 · 多文件站点 · Vue 工程</p>
     </aside>
@@ -33,6 +41,10 @@ defineProps<{
       <div class="auth-form">
         <h1 class="auth-title">{{ title }}</h1>
         <p class="auth-sub">{{ subtitle }}</p>
+        <p v-if="pending" class="pending-slug">
+          <span class="pending-label">登录后开印</span>
+          <span class="pending-text">「{{ pending }}」</span>
+        </p>
         <slot />
       </div>
     </main>
@@ -164,6 +176,31 @@ defineProps<{
 .auth-sub {
   margin: 10px 0 32px;
   color: var(--ink-2);
+}
+
+.pending-slug {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: -12px 0 28px;
+  padding: 12px 14px;
+  border-left: 1px solid var(--ink);
+  background: var(--yellow-tint);
+}
+
+.pending-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink-2);
+}
+
+.pending-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--ink);
 }
 
 .auth-form :deep(.ant-input-affix-wrapper) {

@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 应用代码生成与对话调试主工作台页面
+ * 集成 SSE 流式代码生成、多端实时预览、源码查看、Vue 工程后台构建监听与可视化元素定位修改。
+ */
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'

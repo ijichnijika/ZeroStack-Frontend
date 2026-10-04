@@ -1,11 +1,15 @@
 <script setup lang="ts">
+/**
+ * Agent 模式切换开关组件
+ * 提供“普通生成”与“Agent 深度生成”双态单选切换，集成 WAI-ARIA 键盘无障碍支持与提示浮层。
+ */
 import { computed } from 'vue'
 
 const props = withDefaults(
   defineProps<{
     checked: boolean
     disabled?: boolean
-    /** 禁用时在提示里说明原因 */
+    /** 禁用状态提示文案 */
     disabledReason?: string
   }>(),
   { disabled: false, disabledReason: '' },
@@ -25,6 +29,20 @@ const select = (val: boolean) => {
   if (props.disabled || val === props.checked) return
   emit('update:checked', val)
 }
+
+// 遵循 WAI-ARIA 单选组键盘导航规范：响应方向键切换并转移焦点
+const onArrow = (e: KeyboardEvent) => {
+  const next = ['ArrowRight', 'ArrowDown'].includes(e.key)
+    ? true
+    : ['ArrowLeft', 'ArrowUp'].includes(e.key)
+      ? false
+      : null
+  if (next === null) return
+  e.preventDefault()
+  select(next)
+  const group = e.currentTarget as HTMLElement
+  group.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next ? 1 : 0]?.focus()
+}
 </script>
 
 <template>
@@ -34,12 +52,14 @@ const select = (val: boolean) => {
       :class="{ 'is-agent': checked, 'is-disabled': disabled }"
       role="radiogroup"
       aria-label="生成模式"
+      @keydown="onArrow"
     >
       <span class="knob" aria-hidden="true"></span>
       <button
         type="button"
         role="radio"
         :aria-checked="!checked"
+        :tabindex="checked ? -1 : 0"
         :disabled="disabled"
         class="option"
         :class="{ 'is-on': !checked }"
@@ -51,6 +71,7 @@ const select = (val: boolean) => {
         type="button"
         role="radio"
         :aria-checked="checked"
+        :tabindex="checked ? 0 : -1"
         :disabled="disabled"
         class="option"
         :class="{ 'is-on': checked }"
@@ -116,5 +137,11 @@ const select = (val: boolean) => {
 
 .is-disabled {
   opacity: 0.45;
+}
+
+@media (pointer: coarse) {
+  .mode-switch {
+    height: 44px;
+  }
 }
 </style>

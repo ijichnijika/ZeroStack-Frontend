@@ -64,7 +64,7 @@ const stations = [
 .station-note {
   font-size: 13px;
   line-height: 1.55;
-  color: rgba(255, 255, 255, 0.9);
+  color: #fff;
 }
 
 @media (max-width: 900px) {

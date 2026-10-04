@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { UserOutlined, LockOutlined } from '@ant-design/icons-vue'
 import { userRegister } from '@/api/userController'
 import AuthShell from '@/components/AuthShell.vue'
 
 const router = useRouter()
+const route = useRoute()
 const loading = ref(false)
 
 const formState = reactive<API.UserRegisterRequest>({
@@ -40,7 +41,8 @@ const handleSubmit = async () => {
     const res = await userRegister({ ...formState })
     if (res.data?.code === 0 && res.data.data) {
       message.success('注册成功，请登录')
-      router.push('/user/login')
+      const redirect = route.query.redirect as string | undefined
+      router.push(redirect ? { path: '/user/login', query: { redirect } } : '/user/login')
     } else {
       message.error(res.data?.message || '注册失败，账号可能已被占用')
     }
@@ -88,7 +90,7 @@ const handleSubmit = async () => {
       </a-form-item>
       <a-button type="primary" html-type="submit" block :loading="loading" class="auth-submit">注册</a-button>
       <div class="auth-foot">
-        <span>已有账号？<router-link to="/user/login">直接登录</router-link></span>
+        <span>已有账号？<router-link :to="route.query.redirect ? { path: '/user/login', query: { redirect: route.query.redirect } } : '/user/login'">直接登录</router-link></span>
       </div>
     </a-form>
   </AuthShell>

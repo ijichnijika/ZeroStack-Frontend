@@ -179,17 +179,22 @@ const handleKeydown = (e: KeyboardEvent) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--ink);
 }
 
 .picked-text code {
   font-family: var(--font-mono);
   font-size: 12px;
   font-weight: 600;
+  color: var(--danger);
+  background: rgba(191, 49, 0, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
 }
 
 .picked-snippet {
   margin-left: 6px;
-  color: var(--ink-3);
+  color: var(--ink-2);
 }
 
 .picked-clear {

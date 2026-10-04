@@ -28,9 +28,13 @@
   --blue-tint: #dcecf7;
   --pink-tint: #ffe0f1;
   --yellow-tint: #fff7a8;
+  --warning-tint: #fff2e0;
+  --success-tint: #e6f5ea;
+  --danger-tint: #ffeae3;
 
   /* semantic: danger is pink×yellow keyed with a 25% black screen; success is the blue×yellow overprint */
   --danger: #bf3100;
+  --warning: #d96b00;
   --success: #006d00;
 
   /* type */

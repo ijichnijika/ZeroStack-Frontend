@@ -95,6 +95,11 @@ const open = ref(false)
   border-left: 1.5px solid var(--rule);
   max-height: 360px;
   overflow-y: auto;
+  transition: border-color var(--t-fast) var(--ease-out);
+}
+
+.is-streaming .thinking-body {
+  border-left-color: var(--pink);
 }
 
 .thinking-body :deep(.markdown-body) {

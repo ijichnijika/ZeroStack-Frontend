@@ -29,6 +29,7 @@ const formState = ref({
 
 const isAdmin = computed(() => userStore.loginUser?.userRole === 'admin')
 const typeConfig = computed(() => getCodeGenTypeConfig(appInfo.value?.codeGenType))
+const initial = computed(() => (formState.value.appName || '未').trim().charAt(0))
 const fmt = (t?: string) => (t ? dayjs(t).format('YYYY-MM-DD HH:mm') : '—')
 
 const fillForm = (app: API.AppVO) => {
@@ -114,7 +115,10 @@ onMounted(async () => {
           </a-form-item>
 
           <a-form-item label="优先级" :extra="isAdmin ? '设为 99 即进入首页精选' : '仅管理员可修改优先级'">
-            <a-input-number v-model:value="formState.priority" :disabled="!isAdmin" :min="0" :max="99" style="width: 200px" />
+            <div class="priority-row">
+              <a-input-number v-model:value="formState.priority" :disabled="!isAdmin" :min="0" :max="99" style="width: 140px" />
+              <span v-if="formState.priority === 99" class="tag tag--pink">★ 精选应用</span>
+            </div>
           </a-form-item>
 
           <a-form-item label="初始需求" extra="创建时的需求原文，不可修改">
@@ -130,7 +134,9 @@ onMounted(async () => {
         <aside class="edit-side">
           <div class="cover-frame">
             <img v-if="formState.cover" :src="formState.cover" alt="封面预览" />
-            <div v-else class="cover-empty halftone" aria-hidden="true"></div>
+            <div v-else class="cover-empty halftone" aria-hidden="true">
+              <span class="cover-initial">{{ initial }}</span>
+            </div>
           </div>
 
           <dl class="side-facts">
@@ -239,10 +245,25 @@ onMounted(async () => {
   object-position: top center;
 }
 
+.priority-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .cover-empty {
+  display: grid;
+  place-items: center;
   width: 100%;
   height: 100%;
   color: rgba(255, 255, 255, 0.35);
+}
+
+.cover-initial {
+  font-family: var(--font-display);
+  font-size: 88px;
+  line-height: 1;
+  color: #fff;
 }
 
 .side-facts {

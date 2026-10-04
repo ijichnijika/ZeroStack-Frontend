@@ -1,12 +1,8 @@
 import { ref } from 'vue'
 
 /**
- * Admin 管理页分页查询通用 Composable
- *
- * 为何提取：三个管理页（AppManagePage / ChatManagePage / UserManagePage）
- * 的分页查询模式完全一致——相同的 loading/dataList/total 状态、
- * 相同的 handleSearch / handleReset / handlePageChange 触发器。
- * 将这个骨架抽离后，各页面只需关注自己的「搜索参数」和「数据获取函数」即可。
+ * 管理后台通用分页表格查询 Hook
+ * 统一封装表格分页数据流（loading、dataList、total）及查询重置事件处理。
  *
  * @template TRecord - 列表数据项的类型
  * @template TParams - 查询参数对象的类型，必须包含 pageNum 和 pageSize

@@ -250,8 +250,7 @@ const handleMenuClick = async ({ key }: { key: string | number }) => {
     display: none;
   }
 
-  .user-name,
-  .register-link {
+  .user-name {
     display: none;
   }
 

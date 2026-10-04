@@ -197,7 +197,11 @@ onMounted(() => {
         <template #bodyCell="{ column, record }">
           <!-- 头像渲染 -->
           <template v-if="column.key === 'userAvatar'">
-            <a-avatar :src="record.userAvatar" :size="32">
+            <a-avatar
+              :src="record.userAvatar"
+              :size="32"
+              :class="record.userRole === 'admin' ? 'avatar-admin' : 'avatar-user'"
+            >
               <template #icon><UserOutlined /></template>
             </a-avatar>
           </template>
@@ -285,4 +289,26 @@ onMounted(() => {
     </a-modal>
   </div>
 </template>
+
+<style scoped>
+.avatar-admin {
+  background: var(--blue-tint) !important;
+  color: var(--blue) !important;
+}
+
+.avatar-user {
+  background: var(--yellow-tint) !important;
+  color: var(--ink) !important;
+}
+
+.edit-link {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.delete-link {
+  color: var(--danger);
+  font-weight: 600;
+}
+</style>
 

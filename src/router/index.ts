@@ -1,3 +1,7 @@
+/**
+ * 前端路由与导航守卫配置
+ * 统一管理页面路由表、登录鉴权、管理员权限校验以及动态标题更新。
+ */
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { message } from 'ant-design-vue'

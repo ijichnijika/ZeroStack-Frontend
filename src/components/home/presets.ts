@@ -1,9 +1,17 @@
+/**
+ * 首页示例预设与缓存常量定义
+ */
+
+/** 未登录状态下暂存的提示词与 Agent 开关 Storage Key，用于登录跳转后还原输入 */
+export const PENDING_PROMPT_KEY = 'zerostack_pending_prompt'
+export const PENDING_AGENT_KEY = 'zerostack_pending_agent'
+
 export type PresetKey = 'blog' | 'portfolio' | 'dashboard' | 'product' | 'todo'
 
 export interface Preset {
   key: PresetKey
   label: string
-  /** 样张在输入为空时展示的标题 */
+  /** 样张在默认或选中预设时展示的示例标题 */
   sampleTitle: string
   prompt: string
 }

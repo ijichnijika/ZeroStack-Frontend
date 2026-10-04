@@ -1,9 +1,6 @@
 /**
  * 通用日期格式化工具
- *
- * 为何单独提取：原本 formatDate 函数在三个 Admin 管理页（AppManagePage、
- * ChatManagePage、UserManagePage）中各自重复定义，逻辑完全一致。
- * 集中到此处便于后续统一修改格式（如切换 dayjs 或调整 locale）。
+ * 将 ISO 日期字符串转换为本地可读的展示格式。
  */
 
 /**

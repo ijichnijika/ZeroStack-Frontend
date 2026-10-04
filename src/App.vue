@@ -1,4 +1,8 @@
 <script setup lang="ts">
+/**
+ * 应用根组件
+ * 注入 Ant Design Vue 全局主题 Token、Day.js 本地化与全局组件样式预设。
+ */
 import zhCN from 'ant-design-vue/es/locale/zh_CN'
 import dayjs from 'dayjs'
 import 'dayjs/locale/zh-cn'
@@ -13,7 +17,7 @@ const themeConfig: ThemeConfig = {
     colorLink: '#0078bf',
     colorLinkHover: '#005a8f',
     colorSuccess: '#006d00',
-    colorWarning: '#bfae00',
+    colorWarning: '#d96b00',
     colorError: '#bf3100',
     colorText: '#17171a',
     colorTextSecondary: '#4a4a50',
@@ -26,11 +30,21 @@ const themeConfig: ThemeConfig = {
     borderRadius: 6,
     borderRadiusLG: 10,
     controlHeight: 38,
-    controlOutline: 'rgba(0, 120, 191, 0.18)',
+    controlOutline: '#ffe800',
     fontFamily:
       "'Archivo Variable', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', system-ui, sans-serif",
     fontSize: 14,
     wireframe: false,
+  },
+  components: {
+    Button: {
+      borderRadius: 999,
+      colorPrimary: '#17171a',
+      colorPrimaryHover: '#0078bf',
+    },
+    Radio: {
+      colorPrimary: '#17171a',
+    },
   },
 }
 </script>

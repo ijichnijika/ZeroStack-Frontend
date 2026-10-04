@@ -103,6 +103,13 @@
   font-size: 13px;
 }
 
+/* 触控设备无障碍优化：小尺寸按钮扩大点击热区至最小 44px */
+@media (pointer: coarse) {
+  .btn--sm {
+    height: 44px;
+  }
+}
+
 .btn--lg {
   height: 48px;
   padding: 0 24px;
@@ -216,6 +223,31 @@
   color: #fff;
 }
 
+.tag--success {
+  background: var(--success-tint);
+  color: var(--success);
+}
+
+.tag--warning {
+  background: var(--warning-tint);
+  color: var(--warning);
+}
+
+.tag--danger {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.ant-tag {
+  border: 0 !important;
+  border-radius: var(--pill) !important;
+  font-family: var(--font-body);
+  font-weight: 600;
+  padding: 0 10px !important;
+  height: 22px !important;
+  line-height: 22px !important;
+}
+
 /* ------------------------------------------------------------------ */
 /*  Admin / Operate tables                                             */
 /* ------------------------------------------------------------------ */
@@ -294,6 +326,43 @@
 
 .ant-dropdown .ant-dropdown-menu-item:hover {
   background: var(--yellow-tint) !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-active:not(.ant-select-item-option-disabled) {
+  background: var(--yellow-tint) !important;
+}
+
+.ant-select-dropdown .ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: var(--blue-tint) !important;
+  color: var(--ink) !important;
+  font-weight: 600;
+}
+
+.ant-pagination .ant-pagination-item-active {
+  background: var(--ink) !important;
+  border-color: var(--ink) !important;
+  border-radius: var(--pill) !important;
+}
+
+.ant-pagination .ant-pagination-item-active a {
+  color: #fff !important;
+}
+
+.ant-pagination .ant-pagination-item {
+  border-radius: var(--pill) !important;
+}
+
+.ant-pagination .ant-pagination-item:hover:not(.ant-pagination-item-active) {
+  border-color: var(--ink) !important;
+}
+
+.ant-input:focus,
+.ant-input-focused,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper-focused,
+.ant-select-focused:not(.ant-select-disabled) .ant-select-selector {
+  border-color: var(--ink) !important;
+  box-shadow: 0 0 0 3px var(--yellow) !important;
 }
 
 .ant-modal .ant-modal-content {

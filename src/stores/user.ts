@@ -1,3 +1,7 @@
+/**
+ * 用户状态管理 Store (Pinia)
+ * 维护当前会话登录用户信息，提供登录态获取、状态重置与退出登录能力。
+ */
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { getLoginUser, userLogout } from '@/api/userController'

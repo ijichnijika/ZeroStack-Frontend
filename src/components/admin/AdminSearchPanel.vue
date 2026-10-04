@@ -16,6 +16,7 @@
   padding: 18px 20px 6px;
   border-radius: var(--radius-lg);
   background: var(--paper-2);
+  border: 1px solid var(--rule);
 }
 
 :deep(.ant-form-item) {

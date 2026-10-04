@@ -8,7 +8,7 @@ import { useAdminTable } from '@/composables/useAdminTable'
 import { formatDate } from '@/utils/formatDate'
 import { cleanEmptyStringParams } from '@/utils/cleanParams'
 import PageHead from '@/components/PageHead.vue'
-import { CODE_GEN_TYPE_CONFIG } from '@/enums/codeGenType'
+import { CODE_GEN_TYPE_CONFIG, getCodeGenTypeConfig } from '@/enums/codeGenType'
 import AdminSearchPanel from '@/components/admin/AdminSearchPanel.vue'
 import AdminPagination from '@/components/admin/AdminPagination.vue'
 
@@ -50,9 +50,10 @@ const { loading, dataList, total, fetchData, handleSearch, handleReset, handlePa
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 180, ellipsis: true },
   { title: '封面', dataIndex: 'cover', key: 'cover', width: 80 },
-  { title: '应用名称', dataIndex: 'appName', key: 'appName', width: 250, ellipsis: true },
+  { title: '应用名称', dataIndex: 'appName', key: 'appName', width: 220, ellipsis: true },
+  { title: '类型', key: 'codeGenType', width: 120 },
   { title: '创建者', key: 'creator', width: 150, ellipsis: true },
-  { title: '优先级', dataIndex: 'priority', key: 'priority', width: 80 },
+  { title: '优先级', key: 'priority', width: 110 },
   { title: '创建时间', dataIndex: 'createTime', key: 'createTime', width: 150 },
   { title: '操作', key: 'action', width: 250 },
 ]
@@ -160,6 +161,17 @@ onMounted(() => {
             </a-avatar>
           </template>
 
+          <template v-else-if="column.key === 'codeGenType'">
+            <span
+              v-if="getCodeGenTypeConfig(record.codeGenType)"
+              class="tag"
+              :class="`tag--${getCodeGenTypeConfig(record.codeGenType)?.ink}`"
+            >
+              {{ getCodeGenTypeConfig(record.codeGenType)?.label }}
+            </span>
+            <span v-else class="tag">未生成</span>
+          </template>
+
           <template v-else-if="column.key === 'creator'">
             <a-space>
               <a-avatar size="small" :src="record.user?.userAvatar">
@@ -167,6 +179,11 @@ onMounted(() => {
               </a-avatar>
               <span>{{ record.user?.userName || record.user?.userAccount || '未知' }}</span>
             </a-space>
+          </template>
+
+          <template v-else-if="column.key === 'priority'">
+            <span v-if="record.priority === 99" class="tag tag--pink">★ 精选</span>
+            <span v-else class="tag tabular">{{ record.priority ?? 0 }}</span>
           </template>
 
           <template v-else-if="column.key === 'createTime'">
@@ -220,4 +237,25 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.edit-link {
+  color: var(--blue);
+  font-weight: 600;
+}
+
+.feature-link {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.feature-link:hover {
+  color: var(--pink);
+}
+
+.delete-link {
+  color: var(--danger);
+  font-weight: 600;
+}
+</style>
 
