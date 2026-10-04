@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="wf-title wf-desc">
+  <title id="wf-title">ZeroStack 交互工作流管线</title>
+  <desc id="wf-desc">从自然语言意图到一键部署交付的四阶段可视化闭环流程</desc>
+
+  <defs>
+    <pattern id="wf-grid" x="0" y="0" width="16" height="16" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="16" y2="0" stroke="#17171A" stroke-width="0.4" opacity="0.06"/>
+      <line x1="0" y1="0" x2="0" y2="16" stroke="#17171A" stroke-width="0.4" opacity="0.06"/>
+    </pattern>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#17171A"/>
+    </marker>
+  </defs>
+
+  <!-- 底板 -->
+  <rect width="1200" height="300" rx="12" fill="#FAFAF7" stroke="#17171A" stroke-width="1.8"/>
+  <rect x="2" y="2" width="1196" height="296" rx="10" fill="url(#wf-grid)"/>
+
+  <!-- 顶部标题标尺行 -->
+  <g transform="translate(36, 24)">
+    <text x="0" y="12" font-family="'JetBrains Mono', monospace" font-size="11" font-weight="700" fill="#0078BF" letter-spacing="1">
+      // RUNTIME LIFECYCLE
+    </text>
+    <text x="180" y="12" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="14" font-weight="700" fill="#17171A">
+      全链路交互与部署管线 (From Prompt to Instant Production)
+    </text>
+    <text x="1000" y="12" font-family="'JetBrains Mono', monospace" font-size="10" fill="#6B6B72">
+      PIPELINE_VER: 4.2
+    </text>
+    <line x1="0" y1="22" x2="1128" y2="22" stroke="#17171A" stroke-width="1" stroke-dasharray="3 3" opacity="0.3"/>
+  </g>
+
+  <!-- 四大阶段卡片 (X: 36, 324, 612, 900; 宽度 264; 高度 200) -->
+
+  <!-- 阶段 1: Prompt Composer -->
+  <g transform="translate(36, 64)">
+    <rect x="0" y="0" width="258" height="200" rx="6" fill="#FFFFFF" stroke="#17171A" stroke-width="1.5"/>
+    <!-- 顶部色条: Yellow Drum -->
+    <rect x="0" y="0" width="258" height="6" rx="3" fill="#FFE800" stroke="#17171A" stroke-width="0.5"/>
+    <g transform="translate(16, 24)">
+      <text x="0" y="10" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" fill="#6B6B72">STAGE 01</text>
+      <text x="0" y="32" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="17" font-weight="700" fill="#17171A">
+        意图制版与输入
+      </text>
+      <text x="0" y="52" font-family="'JetBrains Mono', monospace" font-size="11" fill="#FF4100" font-weight="600">
+        Prompt Composer
+      </text>
+      <line x1="0" y1="64" x2="226" y2="64" stroke="#E4E4DD" stroke-width="1"/>
+
+      <!-- 核心细节条目 -->
+      <text x="0" y="84" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 预置精选模版 (SaaS / 极客社区)
+      </text>
+      <text x="0" y="106" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • AI 语义提取智能应用命名
+      </text>
+      <text x="0" y="128" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 全链路 Pinia 对话状态持久化
+      </text>
+      
+      <rect x="0" y="142" width="226" height="20" rx="3" fill="#FFF7A8" stroke="#FFE800" stroke-width="0.8"/>
+      <text x="8" y="156" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="600" fill="#17171A">
+        INPUT READY → TRIGGER SSE
+      </text>
+    </g>
+  </g>
+
+  <!-- 阶段 1 -> 2 连接流向 -->
+  <line x1="294" y1="164" x2="324" y2="164" stroke="#17171A" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 阶段 2: Agent Streaming Engine -->
+  <g transform="translate(328, 64)">
+    <rect x="0" y="0" width="258" height="200" rx="6" fill="#FFFFFF" stroke="#17171A" stroke-width="1.5"/>
+    <!-- 顶部色条: Blue Drum -->
+    <rect x="0" y="0" width="258" height="6" rx="3" fill="#0078BF"/>
+    <g transform="translate(16, 24)">
+      <text x="0" y="10" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" fill="#0078BF">STAGE 02</text>
+      <text x="0" y="32" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="17" font-weight="700" fill="#17171A">
+        流式推理与路由
+      </text>
+      <text x="0" y="52" font-family="'JetBrains Mono', monospace" font-size="11" fill="#0078BF" font-weight="600">
+        SSE &amp; Router Perception
+      </text>
+      <line x1="0" y1="64" x2="226" y2="64" stroke="#E4E4DD" stroke-width="1"/>
+
+      <!-- 核心细节条目 -->
+      <text x="0" y="84" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 原生拦截 &lt;think&gt; 深度思考链
+      </text>
+      <text x="0" y="106" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 单文件 HTML vs Vue 脚手架决策
+      </text>
+      <text x="0" y="128" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • AgentSwitch 状态节点逐级点亮
+      </text>
+
+      <rect x="0" y="142" width="226" height="20" rx="3" fill="#DCECF7" stroke="#0078BF" stroke-width="0.8"/>
+      <text x="8" y="156" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="600" fill="#0078BF">
+        ROUTING RESOLVED → CHUNKS
+      </text>
+    </g>
+  </g>
+
+  <!-- 阶段 2 -> 3 连接流向 -->
+  <line x1="586" y1="164" x2="616" y2="164" stroke="#17171A" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 阶段 3: Live Sandbox Runner -->
+  <g transform="translate(620, 64)">
+    <rect x="0" y="0" width="258" height="200" rx="6" fill="#FFFFFF" stroke="#17171A" stroke-width="1.5"/>
+    <!-- 顶部色条: Pink Drum -->
+    <rect x="0" y="0" width="258" height="6" rx="3" fill="#FF48B0"/>
+    <g transform="translate(16, 24)">
+      <text x="0" y="10" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" fill="#FF48B0">STAGE 03</text>
+      <text x="0" y="32" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="17" font-weight="700" fill="#17171A">
+        实时沙盒与可视化
+      </text>
+      <text x="0" y="52" font-family="'JetBrains Mono', monospace" font-size="11" fill="#FF48B0" font-weight="600">
+        Iframe Sandbox &amp; Live Edit
+      </text>
+      <line x1="0" y1="64" x2="226" y2="64" stroke="#E4E4DD" stroke-width="1"/>
+
+      <!-- 核心细节条目 -->
+      <text x="0" y="84" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • Iframe 安全沙盒热挂载执行
+      </text>
+      <text x="0" y="106" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 全屏与分栏预览无缝切换
+      </text>
+      <text x="0" y="128" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • Live Editor 双向交互结对纠偏
+      </text>
+
+      <rect x="0" y="142" width="226" height="20" rx="3" fill="#FFE0F1" stroke="#FF48B0" stroke-width="0.8"/>
+      <text x="8" y="156" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="600" fill="#FF48B0">
+        HOT MOUNTED → VERIFIED
+      </text>
+    </g>
+  </g>
+
+  <!-- 阶段 3 -> 4 连接流向 -->
+  <line x1="878" y1="164" x2="908" y2="164" stroke="#17171A" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 阶段 4: Instant Deploy & Delivery -->
+  <g transform="translate(912, 64)">
+    <rect x="0" y="0" width="252" height="200" rx="6" fill="#FFFFFF" stroke="#17171A" stroke-width="1.5"/>
+    <!-- 顶部色条: Green Overprint (Blue x Yellow) -->
+    <rect x="0" y="0" width="252" height="6" rx="3" fill="#006D00"/>
+    <g transform="translate(16, 24)">
+      <text x="0" y="10" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="700" fill="#006D00">STAGE 04</text>
+      <text x="0" y="32" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="17" font-weight="700" fill="#17171A">
+        探活部署与交付
+      </text>
+      <text x="0" y="52" font-family="'JetBrains Mono', monospace" font-size="11" fill="#006D00" font-weight="600">
+        Heartbeat &amp; Distribution
+      </text>
+      <line x1="0" y1="64" x2="220" y2="64" stroke="#E4E4DD" stroke-width="1"/>
+
+      <!-- 核心细节条目 -->
+      <text x="0" y="84" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 跨域自动化心跳轮询探测
+      </text>
+      <text x="0" y="106" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • Nginx 生产环境零等待一键上线
+      </text>
+      <text x="0" y="128" font-family="-apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif" font-size="12" fill="#4A4A50">
+        • 多文件源码工程极速 ZIP 打包
+      </text>
+
+      <rect x="0" y="142" width="220" height="20" rx="3" fill="#E6F5EA" stroke="#006D00" stroke-width="0.8"/>
+      <text x="8" y="156" font-family="'JetBrains Mono', monospace" font-size="10" font-weight="600" fill="#006D00">
+        LIVE AT DEPLOY_BASE_URL ✓
+      </text>
+    </g>
+  </g>
+</svg>
