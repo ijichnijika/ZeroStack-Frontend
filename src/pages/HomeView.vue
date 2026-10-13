@@ -3,11 +3,12 @@
  * 平台首页视图
  * 聚合需求输入、多版式交互样张预览、历史/精选应用货架，并维护未登录上下文暂存。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '@/stores/user'
 import { addApp, listGoodAppVoByPage, listMyAppVoByPage } from '@/api/appController'
+import { optimizePrompt, type PromptOptimizationVO } from '@/api/promptController'
 import { usePagedApps } from '@/composables/usePagedApps'
 import { useProofDemo } from '@/composables/useProofDemo'
 import PromptComposer from '@/components/home/PromptComposer.vue'
@@ -17,6 +18,7 @@ import RunStrip from '@/components/home/RunStrip.vue'
 import AppShelf from '@/components/home/AppShelf.vue'
 import {
   PENDING_AGENT_KEY,
+  PENDING_ACTION_KEY,
   PENDING_PROMPT_KEY,
   PRESETS,
   type PresetKey,
@@ -28,6 +30,9 @@ const userStore = useUserStore()
 const prompt = ref('')
 const useAgent = ref(false)
 const submitting = ref(false)
+const optimizing = ref(false)
+const optimization = ref<PromptOptimizationVO | null>(null)
+let optimizationController: AbortController | null = null
 // 未登录跳转前的过渡动效状态，不触发实际创建请求
 const pressing = ref(false)
 const locking = ref(false)
@@ -125,6 +130,76 @@ const handlePromptUpdate = (val: string) => {
   }
 }
 
+const savePendingPrompt = (action: 'create' | 'optimize') => {
+  sessionStorage.setItem(PENDING_PROMPT_KEY, prompt.value)
+  sessionStorage.setItem(PENDING_AGENT_KEY, String(useAgent.value))
+  sessionStorage.setItem(PENDING_ACTION_KEY, action)
+}
+
+const cancelOptimization = () => {
+  optimizationController?.abort()
+  optimizationController = null
+  optimizing.value = false
+  optimization.value = null
+}
+
+const handleOptimize = async () => {
+  if (optimizing.value || busy.value) return
+  const text = prompt.value.trim()
+  if (!text) {
+    composerRef.value?.triggerInvalid()
+    message.warning('先写下你想做的网站')
+    composerRef.value?.focus()
+    return
+  }
+  if (prompt.value.length > 5000) {
+    message.warning('请将需求控制在 5000 字以内')
+    return
+  }
+  demo.stop()
+  if (!isLoggedIn.value) {
+    savePendingPrompt('optimize')
+    router.push(`/user/login?redirect=${encodeURIComponent('/')}`)
+    return
+  }
+  const controller = new AbortController()
+  optimizationController = controller
+  optimizing.value = true
+  optimization.value = null
+  try {
+    const res = await optimizePrompt({ prompt: text, mode: 'create' }, controller.signal)
+    if (controller.signal.aborted) return
+    if (res.data.code === 0 && res.data.data) {
+      optimization.value = res.data.data
+    } else {
+      // 会话过期时请求封装会跳转登录，保留当前输入及操作意图。
+      if (res.data.code === 40100) savePendingPrompt('optimize')
+      message.error(res.data.message || '没能优化提示词，请稍后再试。你写的内容还在。')
+    }
+  } catch {
+    if (!controller.signal.aborted) {
+      message.error('网络或服务暂时不可用，请稍后再试。你写的内容还在。')
+    }
+  } finally {
+    // 取消后可能已开始下一次请求，旧请求不能清除新请求的加载状态。
+    if (optimizationController === controller) {
+      optimizationController = null
+      optimizing.value = false
+    }
+  }
+}
+
+const applyOptimization = () => {
+  const text = optimization.value?.optimizedPrompt.trim()
+  if (!text || text.length > 5000 || busy.value || optimizing.value) return
+  handlePromptUpdate(text)
+  optimization.value = null
+  composerRef.value?.focus()
+  message.success('已放回输入框。再改改也行，满意了再点“生成”。')
+}
+
+onBeforeUnmount(cancelOptimization)
+
 // 预留未登录跳转前的动效展示时间（若开启减弱动态效果则直接跳过）
 const pressBeat = (ms: number) =>
   window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -138,7 +213,7 @@ const lockPlates = async () => {
 }
 
 const handleSubmit = async () => {
-  if (busy.value) return
+  if (busy.value || optimizing.value) return
   const text = prompt.value.trim()
   if (!text) {
     composerRef.value?.triggerInvalid()
@@ -147,8 +222,7 @@ const handleSubmit = async () => {
     return
   }
   if (!isLoggedIn.value) {
-    sessionStorage.setItem(PENDING_PROMPT_KEY, text)
-    sessionStorage.setItem(PENDING_AGENT_KEY, String(useAgent.value))
+    savePendingPrompt('create')
     pressing.value = true
     await pressBeat(520)
     await lockPlates()
@@ -161,6 +235,7 @@ const handleSubmit = async () => {
     if (res.data.code === 0 && res.data.data) {
       sessionStorage.removeItem(PENDING_PROMPT_KEY)
       sessionStorage.removeItem(PENDING_AGENT_KEY)
+      sessionStorage.removeItem(PENDING_ACTION_KEY)
       await pressBeat(700)
       await lockPlates()
       router.push(`/app/chat/${res.data.data}?agent=${useAgent.value}`)
@@ -187,6 +262,7 @@ const featured = usePagedApps(listGoodAppVoByPage)
 onMounted(() => {
   const pendingPrompt = sessionStorage.getItem(PENDING_PROMPT_KEY)
   const pendingAgent = sessionStorage.getItem(PENDING_AGENT_KEY)
+  const pendingAction = sessionStorage.getItem(PENDING_ACTION_KEY)
   if (pendingPrompt) {
     prompt.value = pendingPrompt
     userCustomDraft.value = pendingPrompt
@@ -195,7 +271,8 @@ onMounted(() => {
     }
     sessionStorage.removeItem(PENDING_PROMPT_KEY)
     sessionStorage.removeItem(PENDING_AGENT_KEY)
-    if (isLoggedIn.value) handleSubmit()
+    sessionStorage.removeItem(PENDING_ACTION_KEY)
+    if (isLoggedIn.value && pendingAction !== 'optimize') handleSubmit()
   }
 
   if (isLoggedIn.value) mine.load()
@@ -217,7 +294,8 @@ onMounted(() => {
             <span class="line" data-ghost="的网站。">的网站。</span>
           </h1>
           <p class="hero-lead">
-            满意了一键部署，拿到能分享的地址。说清楚给谁用、要哪些页面，其余交给 ZeroStack，边生成边预览。
+            满意了一键部署，拿到能分享的地址。说清楚给谁用、要哪些页面，其余交给
+            ZeroStack，边生成边预览。
           </p>
           <p v-if="prompt.trim() || demo.running.value" class="proof-strip" aria-hidden="true">
             <span class="proof-strip-label">样张</span>
@@ -227,7 +305,9 @@ onMounted(() => {
             ref="composerRef"
             :model-value="prompt"
             v-model:agent="useAgent"
-            :submitting="submitting"
+            :submitting="busy"
+            :optimizing="optimizing"
+            :optimization="optimization"
             :needs-login="!isLoggedIn"
             :active-preset="activePreset"
             :has-draft="hasDraft"
@@ -238,6 +318,9 @@ onMounted(() => {
             :demo-preset="demo.key.value"
             @preview="handlePreview"
             @submit="handleSubmit"
+            @optimize="handleOptimize"
+            @apply-optimization="applyOptimization"
+            @cancel-optimization="cancelOptimization"
             @focusin="handleFocusIn"
             @focusout="composing = false"
             @pointerenter="demo.stop()"
@@ -497,6 +580,14 @@ onMounted(() => {
 @media (max-width: 1080px) {
   .hero {
     grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
+/* 双栏且视口足够高时保留样张，吸附范围限于需求区域。 */
+@media (min-width: 901px) and (min-height: 560px) {
+  .hero-proof {
+    position: sticky;
+    top: calc(var(--header-h) + 24px);
   }
 }
 

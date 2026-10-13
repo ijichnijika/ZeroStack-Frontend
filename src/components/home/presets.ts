@@ -5,6 +5,8 @@
 /** 未登录状态下暂存的提示词与 Agent 开关 Storage Key，用于登录跳转后还原输入 */
 export const PENDING_PROMPT_KEY = 'zerostack_pending_prompt'
 export const PENDING_AGENT_KEY = 'zerostack_pending_agent'
+/** 区分登录前的优化与生成操作，避免优化登录后自动创建应用。 */
+export const PENDING_ACTION_KEY = 'zerostack_pending_action'
 
 export type PresetKey = 'blog' | 'portfolio' | 'dashboard' | 'product' | 'todo'
 
