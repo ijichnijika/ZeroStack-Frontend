@@ -63,6 +63,7 @@ watch(
 )
 
 const handleKeydown = (e: KeyboardEvent) => {
+  if (e.isComposing) return
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault()
     if (canSend.value) emit('send')
@@ -111,6 +112,7 @@ const handleKeydown = (e: KeyboardEvent) => {
             class="pick-btn"
             :class="{ 'is-on': isEditMode }"
             :aria-pressed="isEditMode"
+            :aria-label="isEditMode ? '退出点选' : '点选修改'"
             :disabled="!hasPreview || !isCreator || generating"
             @click="emit('toggleEditMode')"
           >
@@ -202,6 +204,7 @@ const handleKeydown = (e: KeyboardEvent) => {
   place-items: center;
   width: 26px;
   height: 26px;
+  flex-shrink: 0;
   border: 0;
   border-radius: 50%;
   background: transparent;
@@ -342,6 +345,19 @@ const handleKeydown = (e: KeyboardEvent) => {
   height: 12px;
   border-radius: 2px;
   background: var(--ink);
+}
+
+@media (pointer: coarse) {
+  .chat-textarea {
+    font-size: 16px;
+  }
+
+  .pick-btn,
+  .picked-clear,
+  .send-btn {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 @media (max-width: 480px) {

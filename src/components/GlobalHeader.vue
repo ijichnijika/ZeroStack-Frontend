@@ -241,7 +241,7 @@ const handleMenuClick = async ({ key }: { key: string | number }) => {
   display: none !important;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 900px) {
   .header-inner {
     gap: 16px;
   }

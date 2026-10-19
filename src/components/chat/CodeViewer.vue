@@ -83,7 +83,7 @@ const props = withDefaults(
   }>(),
   {
     streaming: false,
-  }
+  },
 )
 
 const emit = defineEmits<{
@@ -169,7 +169,7 @@ watch(
     if (!isStreaming && isTyping.value) {
       fastForward()
     }
-  }
+  },
 )
 
 const startTypewriter = (targetText: string) => {
@@ -226,7 +226,7 @@ watch(
       isTyping.value = false
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 watch(currentFile, (val) => {
@@ -319,7 +319,7 @@ watch(
       }
     }
   },
-  { immediate: true }
+  { immediate: true },
 )
 
 const toggleDir = (dirKey: string) => {
@@ -553,12 +553,19 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
               type="button"
               class="icon-btn"
               :title="expandedDirs.size > 0 ? '全部折叠' : '全部展开'"
+              :aria-label="expandedDirs.size > 0 ? '全部折叠文件夹' : '全部展开文件夹'"
               @click="toggleAllDirs"
             >
               <FolderOpenOutlined v-if="expandedDirs.size > 0" />
               <FolderOutlined v-else />
             </button>
-            <button type="button" class="icon-btn" title="收起文件栏" @click="isSidebarCollapsed = true">
+            <button
+              type="button"
+              class="icon-btn"
+              title="收起文件栏"
+              aria-label="收起文件栏"
+              @click="isSidebarCollapsed = true"
+            >
               <MenuFoldOutlined />
             </button>
           </div>
@@ -566,8 +573,21 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
 
         <div class="sidebar-search">
           <SearchOutlined class="search-icon" />
-          <input v-model="fileSearchQuery" type="text" placeholder="搜索文件" class="search-input" aria-label="搜索文件" />
-          <button v-if="fileSearchQuery" type="button" class="icon-btn search-clear" title="清空" @click="fileSearchQuery = ''">
+          <input
+            v-model="fileSearchQuery"
+            type="text"
+            placeholder="搜索文件"
+            class="search-input"
+            aria-label="搜索文件"
+          />
+          <button
+            v-if="fileSearchQuery"
+            type="button"
+            class="icon-btn search-clear"
+            title="清空"
+            aria-label="清空文件搜索"
+            @click="fileSearchQuery = ''"
+          >
             <CloseOutlined />
           </button>
         </div>
@@ -607,12 +627,21 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
 
       <main class="ide-main">
         <header class="ide-head">
+          <select
+            class="mobile-file-select"
+            :value="currentFile ?? ''"
+            aria-label="选择源码文件"
+            @change="selectFile(($event.target as HTMLSelectElement).value)"
+          >
+            <option v-for="path in [...files.keys()]" :key="path" :value="path">{{ path }}</option>
+          </select>
           <div ref="tabsScrollContainer" class="tabs">
             <button
               v-if="isSidebarCollapsed"
               type="button"
               class="icon-btn unfold-btn"
               title="展开文件栏"
+              aria-label="展开文件栏"
               @click="isSidebarCollapsed = false"
             >
               <MenuUnfoldOutlined />
@@ -626,25 +655,55 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
               tabindex="0"
               @click="selectFile(tabPath)"
               @keydown.enter="selectFile(tabPath)"
+              @keydown.space.prevent="selectFile(tabPath)"
             >
               <span class="tab-title">{{ tabPath.split('/').pop() }}</span>
               <span v-if="streaming && tabPath === currentFile" class="live-dot"></span>
-              <button type="button" class="tab-close" title="关闭" @click="closeTab(tabPath, $event)">
+              <button
+                type="button"
+                class="tab-close"
+                title="关闭"
+                :aria-label="`关闭 ${tabPath}`"
+                @keydown.enter.stop
+                @keydown.space.stop
+                @click="closeTab(tabPath, $event)"
+              >
                 <CloseOutlined />
               </button>
             </div>
           </div>
 
           <div class="ide-tools">
-            <button v-if="isTyping" type="button" class="tool-btn is-text" title="直接显示完整代码" @click="fastForward">
+            <button
+              v-if="isTyping"
+              type="button"
+              class="tool-btn is-text"
+              title="直接显示完整代码"
+              aria-label="直接显示完整代码"
+              @click="fastForward"
+            >
               <FastForwardOutlined />
               <span>跳过动画</span>
             </button>
-            <button type="button" class="tool-btn" :disabled="fontSize <= 12" title="缩小字号" @click="decreaseFontSize">
+            <button
+              type="button"
+              class="tool-btn"
+              :disabled="fontSize <= 12"
+              title="缩小字号"
+              aria-label="缩小字号"
+              @click="decreaseFontSize"
+            >
               <ZoomOutOutlined />
             </button>
             <span class="font-size tabular">{{ fontSize }}</span>
-            <button type="button" class="tool-btn" :disabled="fontSize >= 16" title="放大字号" @click="increaseFontSize">
+            <button
+              type="button"
+              class="tool-btn"
+              :disabled="fontSize >= 16"
+              title="放大字号"
+              aria-label="放大字号"
+              @click="increaseFontSize"
+            >
               <ZoomInOutlined />
             </button>
             <button
@@ -653,18 +712,38 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
               :class="{ active: isWordWrap }"
               :aria-pressed="isWordWrap"
               :title="isWordWrap ? '取消自动换行' : '自动换行'"
+              :aria-label="isWordWrap ? '取消自动换行' : '自动换行'"
               @click="isWordWrap = !isWordWrap"
             >
               <AlignLeftOutlined />
             </button>
-            <button type="button" class="tool-btn" :class="{ success: copied }" :title="copied ? '已复制' : '复制代码'" @click="copyCode">
+            <button
+              type="button"
+              class="tool-btn"
+              :class="{ success: copied }"
+              :title="copied ? '已复制' : '复制代码'"
+              :aria-label="copied ? '已复制' : '复制代码'"
+              @click="copyCode"
+            >
               <CheckOutlined v-if="copied" />
               <CopyOutlined v-else />
             </button>
-            <button type="button" class="tool-btn" title="下载此文件" @click="downloadFile">
+            <button
+              type="button"
+              class="tool-btn"
+              title="下载此文件"
+              aria-label="下载此文件"
+              @click="downloadFile"
+            >
               <DownloadOutlined />
             </button>
-            <button type="button" class="tool-btn" :title="isFullscreen ? '退出全屏 (Esc)' : '全屏'" @click="toggleFullscreen">
+            <button
+              type="button"
+              class="tool-btn"
+              :title="isFullscreen ? '退出全屏 (Esc)' : '全屏'"
+              :aria-label="isFullscreen ? '退出全屏' : '全屏'"
+              @click="toggleFullscreen"
+            >
               <FullscreenExitOutlined v-if="isFullscreen" />
               <FullscreenOutlined v-else />
             </button>
@@ -1016,6 +1095,10 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
   border-bottom: 1px solid var(--rule);
 }
 
+.mobile-file-select {
+  display: none;
+}
+
 .tabs {
   display: flex;
   align-items: stretch;
@@ -1237,6 +1320,43 @@ const badgeText = (fileName: string) => BADGE_TEXT[getFileIconType(fileName)] ??
 @media (max-width: 760px) {
   .ide-sidebar {
     display: none;
+  }
+
+  .ide-head {
+    height: auto;
+    flex-wrap: wrap;
+  }
+
+  .ide-head > .tabs {
+    display: none;
+  }
+
+  .mobile-file-select {
+    display: block;
+    width: 100%;
+    min-width: 0;
+    height: 44px;
+    padding: 0 12px;
+    border: 0;
+    background: var(--paper-2);
+    color: var(--ink);
+    font: inherit;
+    font-size: 16px;
+  }
+
+  .ide-tools {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    padding-block: 4px;
+    border-top: 1px solid var(--rule);
+  }
+}
+
+@media (pointer: coarse) {
+  .tool-btn {
+    min-width: 44px;
+    min-height: 44px;
   }
 }
 </style>

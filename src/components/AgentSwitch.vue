@@ -131,6 +131,12 @@ const onArrow = (e: KeyboardEvent) => {
   color: #fff;
 }
 
+@media (pointer: coarse) {
+  .mode-switch {
+    height: 44px;
+  }
+}
+
 .option:disabled {
   cursor: not-allowed;
 }

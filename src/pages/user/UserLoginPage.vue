@@ -73,9 +73,20 @@ const handleSubmit = async () => {
       </a-form-item>
       <a-button type="primary" html-type="submit" block :loading="loading" class="auth-submit">登录</a-button>
       <div class="auth-foot">
-        <span>还没有账号？<router-link :to="route.query.redirect ? { path: '/user/register', query: { redirect: route.query.redirect } } : '/user/register'">注册一个</router-link></span>
-        <a-tooltip title="目前需要联系管理员重置密码">
-          <span class="forgot">忘记密码</span>
+        <span
+          >还没有账号？<router-link
+            :to="
+              route.query.redirect
+                ? { path: '/user/register', query: { redirect: route.query.redirect } }
+                : '/user/register'
+            "
+            >注册一个</router-link
+          ></span
+        >
+        <a-tooltip title="目前需要联系管理员重置密码" :trigger="['hover', 'focus', 'click']">
+          <button type="button" class="forgot" aria-label="忘记密码，请联系管理员重置">
+            忘记密码
+          </button>
         </a-tooltip>
       </div>
     </a-form>
@@ -84,6 +95,10 @@ const handleSubmit = async () => {
 
 <style scoped>
 .forgot {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink-2);
   cursor: help;
   text-decoration: underline dotted;
   text-underline-offset: 3px;

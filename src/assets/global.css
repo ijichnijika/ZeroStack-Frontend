@@ -186,6 +186,22 @@
   height: 32px;
 }
 
+@media (pointer: coarse) {
+  .btn {
+    min-height: 44px;
+  }
+
+  .btn--icon {
+    min-width: 44px;
+  }
+
+  .ant-input,
+  .ant-input-number-input,
+  .ant-select-selection-search-input {
+    font-size: 16px;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /*  Tags: small ink stamps                                             */
 /* ------------------------------------------------------------------ */

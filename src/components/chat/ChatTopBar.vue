@@ -45,6 +45,15 @@ const titleInput = ref<HTMLInputElement | null>(null)
 const typeConfig = computed(() => getCodeGenTypeConfig(props.appInfo?.codeGenType))
 const deployBlocked = computed(() => !props.hasPreview || props.busy)
 
+const saveTitleOnLeave = (event: FocusEvent) => {
+  if (
+    event.relatedTarget instanceof Node &&
+    (event.currentTarget as HTMLElement).contains(event.relatedTarget)
+  )
+    return
+  emit('saveTitle')
+}
+
 watch(
   () => props.isEditingTitle,
   (editing) => {
@@ -73,7 +82,7 @@ watch(
         <EditOutlined v-if="canManage" class="title-edit-icon" aria-hidden="true" />
       </button>
 
-      <div v-else class="title-edit">
+      <div v-else class="title-edit" @focusout="saveTitleOnLeave">
         <input
           ref="titleInput"
           :value="editTitleValue"
@@ -83,7 +92,6 @@ watch(
           @input="emit('update:editTitleValue', ($event.target as HTMLInputElement).value)"
           @keyup.enter="emit('saveTitle')"
           @keyup.esc="emit('saveTitle')"
-          @blur="emit('saveTitle')"
         />
         <a-tooltip title="让 AI 根据需求起个名字">
           <button
@@ -91,7 +99,8 @@ watch(
             class="btn btn--quiet btn--icon btn--sm"
             aria-label="AI 起名"
             :disabled="generatingTitle"
-            @mousedown.prevent="emit('aiGenTitle')"
+            @mousedown.prevent
+            @click="emit('aiGenTitle')"
           >
             <LoadingOutlined v-if="generatingTitle" />
             <ThunderboltOutlined v-else />
@@ -101,7 +110,8 @@ watch(
           type="button"
           class="btn btn--ink btn--icon btn--sm"
           aria-label="保存名称"
-          @mousedown.prevent="emit('saveTitle')"
+          @mousedown.prevent
+          @click="emit('saveTitle')"
         >
           <CheckOutlined />
         </button>
@@ -233,10 +243,18 @@ watch(
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.title-edit .btn {
+  flex-shrink: 0;
 }
 
 .title-input {
-  width: 240px;
+  width: 100%;
+  max-width: 240px;
+  min-width: 0;
   height: 36px;
   padding: 0 12px;
   border: 1.5px solid var(--ink);
@@ -316,6 +334,20 @@ watch(
     gap: 4px;
   }
 
+  .topbar:has(.title-edit) {
+    height: auto;
+    flex-wrap: wrap;
+    padding-block: 8px;
+  }
+
+  .topbar-left:has(.title-edit) {
+    flex-basis: 100%;
+  }
+
+  .topbar-right {
+    margin-left: auto;
+  }
+
   .topbar-left > .brand-mark {
     width: 20px;
     height: 20px;
@@ -323,10 +355,6 @@ watch(
 
   .title-btn {
     padding: 0 6px;
-  }
-
-  .title-input {
-    width: 140px;
   }
 }
 </style>

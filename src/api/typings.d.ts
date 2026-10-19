@@ -160,8 +160,8 @@ declare namespace API {
     lastCreateTime?: string
   }
 
-  type chatToGenCodeParams = {
-    appId: number
+  type AppChatRequest = {
+    appId: number | string
     message: string
     agent?: boolean
   }

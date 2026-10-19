@@ -38,8 +38,8 @@ const { loading, dataList, total, fetchData, handleSearch, handleReset, handlePa
 
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 210 },
-  { title: '账号', dataIndex: 'userAccount', key: 'userAccount' },
-  { title: '用户名', dataIndex: 'userName', key: 'userName' },
+  { title: '账号', dataIndex: 'userAccount', key: 'userAccount', ellipsis: true },
+  { title: '用户名', dataIndex: 'userName', key: 'userName', ellipsis: true },
   { title: '头像', dataIndex: 'userAvatar', key: 'userAvatar', width: 80 },
   { title: '简介', dataIndex: 'userProfile', key: 'userProfile', ellipsis: true },
   { title: '角色', dataIndex: 'userRole', key: 'userRole', width: 120 },

@@ -8,7 +8,9 @@ import PageHead from '@/components/PageHead.vue'
 const userStore = useUserStore()
 const user = computed(() => userStore.loginUser)
 const isAdmin = computed(() => user.value?.userRole === 'admin')
-const joined = computed(() => (user.value?.createTime ? dayjs(user.value.createTime).format('YYYY 年 M 月 D 日') : '—'))
+const joined = computed(() =>
+  user.value?.createTime ? dayjs(user.value.createTime).format('YYYY 年 M 月 D 日') : '—',
+)
 </script>
 
 <template>
@@ -118,6 +120,8 @@ const joined = computed(() => (user.value?.createTime ? dayjs(user.value.createT
 }
 
 .fact dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 0;
   font-size: 16px;
   line-height: 1.65;
@@ -130,7 +134,7 @@ const joined = computed(() => (user.value?.createTime ? dayjs(user.value.createT
 
 @media (max-width: 760px) {
   .profile {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .fact {

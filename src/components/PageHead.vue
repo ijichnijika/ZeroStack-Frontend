@@ -32,6 +32,11 @@ defineProps<{
   font-size: clamp(36px, 4.4vw, 56px);
 }
 
+.head-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .head-sub {
   margin-top: 10px;
   color: var(--ink-2);
@@ -39,6 +44,8 @@ defineProps<{
 
 .head-actions {
   display: flex;
+  flex-wrap: wrap;
+  max-width: 100%;
   gap: 8px;
   flex-shrink: 0;
 }

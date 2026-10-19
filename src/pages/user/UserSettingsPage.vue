@@ -46,7 +46,7 @@ const handleSubmit = async () => {
       <ArrowLeftOutlined />
       个人中心
     </router-link>
-    <PageHead title="个人设置" subtitle="修改昵称、头像和简介，右侧会实时显示效果。" />
+    <PageHead title="个人设置" subtitle="修改昵称、头像和简介，实时预览效果。" />
 
     <div class="settings">
       <a-form layout="vertical" :model="formState" class="settings-form" @finish="handleSubmit">

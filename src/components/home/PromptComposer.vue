@@ -3,11 +3,10 @@
  * 首页需求输入组件
  * 承载用户需求输入、快捷键提交、字数限制统计、预设需求切换与草稿还原。
  */
-import { computed, ref } from 'vue'
+import { computed, onUnmounted, ref } from 'vue'
 import {
   ArrowRightOutlined,
   ArrowUpOutlined,
-  FormOutlined,
   LoadingOutlined,
   UndoOutlined,
 } from '@ant-design/icons-vue'
@@ -72,6 +71,10 @@ const textareaRef = ref<HTMLTextAreaElement | null>(null)
 const isInvalid = ref(false)
 let invalidTimer: ReturnType<typeof setTimeout> | null = null
 
+onUnmounted(() => {
+  if (invalidTimer) clearTimeout(invalidTimer)
+})
+
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform)
 const modKey = isMac ? '⌘' : 'Ctrl'
 
@@ -89,6 +92,7 @@ const handleInput = (e: Event) => {
 }
 
 const handleKeydown = (e: KeyboardEvent) => {
+  if (e.isComposing) return
   if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
     e.preventDefault()
     emit('submit')
@@ -154,17 +158,39 @@ defineExpose({
             <kbd>{{ modKey }}</kbd
             ><kbd>Enter</kbd> 生成
           </span>
-          <button
-            type="button"
-            class="btn btn--line btn--lg composer-optimize"
-            :disabled="optimizing || submitting"
-            :aria-busy="optimizing"
-            @click="emit('optimize')"
+          <a-tooltip
+            :title="optimizing ? '正在帮你整理需求' : '优化提示词'"
+            :trigger="['hover', 'focus']"
+            :mouse-enter-delay="0.4"
           >
-            <LoadingOutlined v-if="optimizing" aria-hidden="true" />
-            <FormOutlined v-else aria-hidden="true" />
-            {{ optimizing ? '正在优化' : '优化提示词' }}
-          </button>
+            <button
+              type="button"
+              class="btn composer-optimize"
+              :disabled="optimizing || submitting"
+              :aria-busy="optimizing"
+              :aria-label="optimizing ? '正在优化提示词' : '优化提示词'"
+              @click="emit('optimize')"
+            >
+              <LoadingOutlined v-if="optimizing" aria-hidden="true" />
+              <svg
+                v-else
+                class="optimize-spark"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.7"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path
+                  d="M10 5c1.2 4.6 2.4 5.8 7 7-4.6 1.2-5.8 2.4-7 7-1.2-4.6-2.4-5.8-7-7 4.6-1.2 5.8-2.4 7-7Z"
+                />
+                <path d="M19 2v6m-3-3h6" />
+              </svg>
+              <span>优化</span>
+            </button>
+          </a-tooltip>
           <button
             type="submit"
             class="btn btn--pink btn--lg composer-submit"
@@ -404,6 +430,33 @@ kbd {
   min-width: 118px;
 }
 
+.composer-optimize {
+  flex-shrink: 0;
+  gap: 6px;
+  height: 44px;
+  padding: 0 12px;
+  background: var(--paper-2);
+  color: var(--ink-2);
+  font-size: 13px;
+}
+
+.composer-optimize:hover:not(:disabled) {
+  background: var(--paper-3);
+  color: var(--ink);
+}
+
+.composer-optimize:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+.optimize-spark,
+.composer-optimize :deep(.anticon) {
+  width: 20px;
+  height: 20px;
+  font-size: 20px;
+}
+
 .preset-row {
   display: flex;
   flex-wrap: wrap;
@@ -592,18 +645,17 @@ kbd {
     display: none;
   }
 
+  .mode-note {
+    display: none;
+  }
+
   .composer-actions {
     width: 100%;
+    justify-content: flex-end;
   }
 
   .composer-counter {
     margin-left: auto;
-  }
-
-  .composer-optimize,
-  .composer-submit {
-    flex: 1;
-    min-width: 0;
   }
 }
 </style>

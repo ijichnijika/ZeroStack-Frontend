@@ -42,7 +42,7 @@ defineProps<{
         <h1 class="auth-title">{{ title }}</h1>
         <p class="auth-sub">{{ subtitle }}</p>
         <p v-if="pending" class="pending-slug">
-          <span class="pending-label">登录后开印</span>
+          <span class="pending-label">你的需求已保留</span>
           <span class="pending-text">「{{ pending }}」</span>
         </p>
         <slot />
@@ -229,6 +229,8 @@ defineProps<{
 
 .auth-form :deep(.auth-foot) {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-top: 8px;
@@ -239,6 +241,7 @@ defineProps<{
 @media (max-width: 900px) {
   .auth {
     grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
   }
 
   .poster {
@@ -252,6 +255,13 @@ defineProps<{
 
   .poster-foot {
     display: none;
+  }
+
+  .poster-bar {
+    top: auto;
+    bottom: 20px;
+    height: 10px;
+    width: 26%;
   }
 
   .auth-form {

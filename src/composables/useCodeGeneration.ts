@@ -1,7 +1,8 @@
-import { ref, type Ref } from 'vue'
+import { onBeforeUnmount, ref, type Ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { API_BASE_URL } from '@/config/env'
 import { stopAppGenCode } from '@/api/appController'
+import { postEventStream } from '@/utils/postEventStream'
 import type { ChatMessage } from '@/composables/useChatHistory'
 
 interface Options {
@@ -27,7 +28,8 @@ export function useCodeGeneration(options: Options) {
   const generating = ref(false)
   const codeFiles = ref<Map<string, string>>(new Map())
   const activeCodeFile = ref('')
-  let source: EventSource | null = null
+  let controller: AbortController | null = null
+  onBeforeUnmount(() => controller?.abort())
 
   const appendChunk = (target: ChatMessage, dataStr: string) => {
     try {
@@ -38,7 +40,11 @@ export function useCodeGeneration(options: Options) {
       }
       try {
         const d = JSON.parse(parsed.d)
-        if (d.type === 'code_update') {
+        if (d.type === 'code_reset') {
+          target.content = ''
+          codeFiles.value.clear()
+          activeCodeFile.value = ''
+        } else if (d.type === 'code_update') {
           target.content += d.summary || ''
           const filePath = d.filePath as string
           if (d.toolName === 'writeFile') {
@@ -51,7 +57,13 @@ export function useCodeGeneration(options: Options) {
           options.onCodeUpdate?.(filePath)
         } else if (d.type === 'workflow_progress') {
           const icon =
-            d.stepNumber === -1 ? '❌' : d.stepName === '完成' ? '🎉' : d.stepNumber === 0 ? '🚀' : '✅'
+            d.stepNumber === -1
+              ? '❌'
+              : d.stepName === '完成'
+                ? '🎉'
+                : d.stepNumber === 0
+                  ? '🚀'
+                  : '✅'
           target.content += `\n> ${icon} **[${d.stepName}]** ${d.message}\n\n`
         } else if (d.type === 'ai_response' || d.type === 'ai_thinking') {
           target.content += d.data || ''
@@ -67,65 +79,54 @@ export function useCodeGeneration(options: Options) {
     }
   }
 
-  const close = () => {
-    source?.close()
-    source = null
-  }
-
-  const generate = (text: string) => {
+  const generate = async (text: string) => {
+    if (generating.value) return
     generating.value = true
+    const requestController = new AbortController()
+    controller = requestController
     const index = messages.value.length
     messages.value.push({ role: 'ai', content: '' })
     const target = () => messages.value[index]
 
-    const finish = async () => {
-      generating.value = false
-      close()
-      await options.onFinish?.()
-    }
-
     try {
-      const url = `${API_BASE_URL}/app/chat/gen/code?appId=${appId}&message=${encodeURIComponent(text)}&agent=${useAgent.value}`
-      source = new EventSource(url, { withCredentials: true })
-
-      source.onmessage = (event) => {
-        const msg = target()
-        if (event.data && msg) {
-          appendChunk(msg, event.data)
-          options.onChunk?.()
-        }
-      }
-
-      source.addEventListener('done', () => {
-        finish()
-      })
-
-      source.addEventListener('business-error', (event) => {
-        let text = '操作受限'
-        try {
-          text = JSON.parse((event as MessageEvent).data).message || text
-        } catch {
-          /* 保持默认文案 */
-        }
-        message.error(text)
-        const msg = target()
-        if (msg) msg.content += `\n[${text}]`
-        generating.value = false
-        close()
-        options.onChunk?.()
-      })
-
-      source.onerror = () => {
-        message.error('生成中断，连接已断开')
-        const msg = target()
-        if (msg) msg.content += '\n[生成中断]'
-        finish()
-      }
+      await postEventStream(
+        `${API_BASE_URL}/app/chat/gen/code`,
+        { appId, message: text, agent: useAgent.value } satisfies API.AppChatRequest,
+        requestController.signal,
+        (event) => {
+          if (event.event === 'done') return false
+          if (event.event === 'business-error') {
+            let errorText = '操作受限'
+            try {
+              errorText = JSON.parse(event.data).message || errorText
+            } catch {
+              /* 无法解析时保留通用错误信息。 */
+            }
+            message.error(errorText)
+            const msg = target()
+            if (msg) msg.content += `\n[${errorText}]`
+            options.onChunk?.()
+            return false
+          }
+          const msg = target()
+          if (event.event === 'message' && event.data && msg) {
+            appendChunk(msg, event.data)
+            options.onChunk?.()
+          }
+        },
+      )
     } catch (error: unknown) {
-      message.error(`生成失败：${error instanceof Error ? error.message : '未知异常'}`)
-      const msg = target()
-      if (msg) msg.content += '\n[生成失败]'
+      if (!requestController.signal.aborted) {
+        const errorText = error instanceof Error ? error.message : '生成失败'
+        message.error(errorText)
+        const msg = target()
+        if (msg) msg.content += `\n[${errorText}]`
+        options.onChunk?.()
+      }
+    } finally {
       generating.value = false
+      controller = null
+      if (!requestController.signal.aborted) await options.onFinish?.()
     }
   }
 
