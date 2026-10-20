@@ -13,7 +13,7 @@ interface Options {
   onChunk?: () => void
   /** Agent 写入/修改了某个文件 */
   onCodeUpdate?: (filePath: string) => void
-  /** 生成结束（正常完成或中断） */
+  /** 收到完成事件后刷新生成结果 */
   onFinish?: () => void | Promise<void>
 }
 
@@ -87,6 +87,7 @@ export function useCodeGeneration(options: Options) {
     const index = messages.value.length
     messages.value.push({ role: 'ai', content: '' })
     const target = () => messages.value[index]
+    let completed = false
 
     try {
       await postEventStream(
@@ -94,7 +95,10 @@ export function useCodeGeneration(options: Options) {
         { appId, message: text, agent: useAgent.value } satisfies API.AppChatRequest,
         requestController.signal,
         (event) => {
-          if (event.event === 'done') return false
+          if (event.event === 'done') {
+            completed = true
+            return false
+          }
           if (event.event === 'business-error') {
             let errorText = '操作受限'
             try {
@@ -126,7 +130,7 @@ export function useCodeGeneration(options: Options) {
     } finally {
       generating.value = false
       controller = null
-      if (!requestController.signal.aborted) await options.onFinish?.()
+      if (completed && !requestController.signal.aborted) await options.onFinish?.()
     }
   }
 
