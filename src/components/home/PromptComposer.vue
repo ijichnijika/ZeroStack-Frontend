@@ -25,17 +25,11 @@ const props = withDefaults(
     optimization?: PromptOptimizationVO | null
     activePreset: PresetKey | null
     hasDraft?: boolean
-    /** 自动演示正在输入的内容；null 表示非演示态 */
-    demoText?: string | null
-    /** 自动演示当前对应的预设 key */
-    demoPreset?: PresetKey | null
     /** 是否需要登录提示 */
     needsLogin?: boolean
   }>(),
   {
     hasDraft: false,
-    demoText: null,
-    demoPreset: null,
     needsLogin: false,
     optimizing: false,
     optimization: null,
@@ -128,11 +122,7 @@ defineExpose({
         maxlength="5000"
         :aria-invalid="isInvalid"
         class="composer-input"
-        :placeholder="
-          demoText !== null
-            ? `示例 ｜ ${demoText}`
-            : '描述你想要的网站：给谁用、有哪些页面、想要什么感觉……'
-        "
+        placeholder="描述你想要的网站：给谁用、有哪些页面、想要什么感觉……"
         @input="handleInput"
         @keydown="handleKeydown"
       ></textarea>
@@ -286,7 +276,7 @@ defineExpose({
         class="preset-chip"
         :class="[
           `tone-${CHIP_TONES[i % CHIP_TONES.length]}`,
-          { 'is-active': activePreset === p.key, 'is-demo': demoPreset === p.key },
+          { 'is-active': activePreset === p.key },
         ]"
         :aria-pressed="activePreset === p.key"
         @click="emit('preset', p.key)"
@@ -568,13 +558,6 @@ kbd {
 .restore-chip {
   border-color: var(--rule);
   color: var(--ink-2);
-}
-
-/* 自动演示高亮标签：使用虚线描边区别于已选中的实色背景态 */
-.preset-chip.is-demo:not(.is-active) {
-  border-style: dashed;
-  border-color: var(--ink);
-  color: var(--ink);
 }
 
 .login-note {

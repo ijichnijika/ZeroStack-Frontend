@@ -163,7 +163,7 @@ frontend/
 │   ├── assets/          # 全局样式系统 (base.css Riso Tokens, global.css)
 │   ├── components/      # 核心组件库 (BrandMark, AgentSwitch, MarkdownViewer)
 │   │   ├── chat/        # 深度思考折叠、流式气泡、沙盒外壳组件
-│   │   └── home/        # 印刷工坊首页组件 (PressBed, ProofSheet, ProofPlates)
+│   │   └── home/        # 印刷工坊首页组件 (ProofSheet, ProofPlates, ProofThumb)
 │   ├── composables/     # 逻辑复用组合式函数 (usePointerDrift, useSSE 等)
 │   ├── config/          # 运行时环境与网络通信配置
 │   ├── layouts/         # 基础与分栏排版布局容器
