@@ -7,6 +7,7 @@ import type { ChatMessage } from '@/composables/useChatHistory'
 interface Segment {
   type: 'thinking' | 'text'
   content: string
+  streaming?: boolean
 }
 
 const props = defineProps<{
@@ -41,7 +42,9 @@ function parseSegments(content: string): Segment[] {
     const afterOpen = remaining.slice(start + '<think>'.length)
     const end = afterOpen.indexOf('</think>')
     const body = (end === -1 ? afterOpen : afterOpen.slice(0, end)).trim()
-    if (body) segments.push({ type: 'thinking', content: body })
+    if (body || end === -1) {
+      segments.push({ type: 'thinking', content: body, streaming: end === -1 })
+    }
     if (end === -1) break
     remaining = afterOpen.slice(end + '</think>'.length)
   }
@@ -86,7 +89,7 @@ function displayUserText(content: string) {
               <ThinkingBlock
                 v-if="seg.type === 'thinking'"
                 :content="seg.content"
-                :streaming="isLiveMessage(index) && sIdx === parseSegments(msg.content).length - 1"
+                :streaming="isLiveMessage(index) && !!seg.streaming"
               />
               <MarkdownViewer v-else :content="seg.content" />
             </template>

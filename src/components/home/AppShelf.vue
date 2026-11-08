@@ -72,28 +72,28 @@ const emit = defineEmits<{
 .shelf-head {
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding-bottom: 18px;
-  margin-bottom: 28px;
-  border-bottom: 2px solid var(--ink);
+  gap: 12px;
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--rule);
 }
 
 .shelf-title {
-  font-size: clamp(32px, 3.4vw, 46px);
+  font-size: 30px;
 }
 
 .shelf-count {
   display: grid;
   place-items: center;
-  min-width: 38px;
-  height: 38px;
+  min-width: 30px;
+  height: 26px;
   padding: 0 8px;
   border-radius: var(--pill);
-  background: var(--pink);
+  background: var(--paper-2);
   font-family: var(--font-wide);
   font-stretch: 112%;
-  font-weight: 800;
-  font-size: 15px;
+  font-weight: 600;
+  font-size: 12px;
 }
 
 .shelf-grid {
@@ -145,9 +145,20 @@ const emit = defineEmits<{
   flex-wrap: wrap;
   gap: 16px;
   padding: 22px 24px;
+  border: 1.5px dashed var(--ink-4);
   border-radius: var(--radius);
-  background: var(--pink-tint);
+  background: var(--sheet);
   color: var(--ink-2);
+}
+
+.shelf-note::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--pink);
+  box-shadow: 4px 3px 0 var(--yellow);
 }
 
 .shelf-pager {

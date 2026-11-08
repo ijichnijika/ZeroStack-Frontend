@@ -94,10 +94,11 @@ defineExpose({ pulse })
   position: absolute;
   inset: 0;
   border-radius: var(--radius);
-  background: var(--yellow);
+  background: var(--pink);
+  mix-blend-mode: multiply;
   translate: calc(var(--px) * 4px) calc(var(--py) * 4px);
-  transform: translate(calc(14px * var(--fan)), calc(14px * var(--fan)));
-  transition: transform var(--t-register) var(--ease-out);
+  transform: translate(calc(9px * var(--fan)), calc(9px * var(--fan)));
+  transition: transform var(--t-register) var(--ease-out) var(--proof-delay, 0ms);
 }
 
 .is-off .plate {

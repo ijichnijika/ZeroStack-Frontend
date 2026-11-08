@@ -10,11 +10,9 @@ import { useUserStore } from '@/stores/user'
 import { addApp, listGoodAppVoByPage, listMyAppVoByPage } from '@/api/appController'
 import { optimizePrompt, type PromptOptimizationVO } from '@/api/promptController'
 import { usePagedApps } from '@/composables/usePagedApps'
-import { useProofDemo } from '@/composables/useProofDemo'
+import { usePointerDrift } from '@/composables/usePointerDrift'
 import PromptComposer from '@/components/home/PromptComposer.vue'
 import ProofSheet from '@/components/home/ProofSheet.vue'
-import PressBed from '@/components/home/PressBed.vue'
-import RunStrip from '@/components/home/RunStrip.vue'
 import AppShelf from '@/components/home/AppShelf.vue'
 import {
   PENDING_AGENT_KEY,
@@ -40,13 +38,34 @@ const busy = computed(() => submitting.value || pressing.value)
 const printing = computed(() => busy.value && !locking.value)
 const composing = ref(false)
 const previewPreset = ref<PresetKey | null>(null)
-const demo = useProofDemo()
 const activePreset = ref<PresetKey | null>(null)
 const userCustomDraft = ref('')
 const composerRef = ref<InstanceType<typeof PromptComposer> | null>(null)
 
 const isLoggedIn = computed(() => Boolean(userStore.loginUser?.id))
 const hasDraft = computed(() => Boolean(userCustomDraft.value.trim() && activePreset.value))
+
+// 标题按孔版印刷分版绘制：墨版承载文字，黄/蓝/粉专色版为同字副本，只做套印动效
+const TITLE_LINES = ['一句话，', '做出能上线的网站。'] as const
+const titleRef = ref<HTMLElement | null>(null)
+
+const STEPS = [
+  { title: '描述想法', desc: '用一句话说出你想要的网站。', tone: 'yellow' },
+  { title: '生成与调整', desc: '边生成边预览，随时继续修改。', tone: 'pink' },
+  { title: '分享网站', desc: '满意后一键上线，获得专属链接。', tone: 'blue' },
+] as const
+
+usePointerDrift(titleRef, ({ vx, vy }) => {
+  titleRef.value?.style.setProperty('--px', vx.toFixed(3))
+  titleRef.value?.style.setProperty('--py', vy.toFixed(3))
+})
+
+// 首屏入场期间推迟样张套印，与标题印刷节奏衔接；结束后恢复即时响应
+const intro = ref(true)
+const introTimer = setTimeout(() => {
+  intro.value = false
+}, 2000)
+onBeforeUnmount(() => clearTimeout(introTimer))
 
 // 根据输入文本关键词自动推导推荐版式；无匹配项时默认选用通用落地页版式
 const LAYOUT_HINTS: [PresetKey, RegExp][] = [
@@ -63,8 +82,7 @@ const proofLayout = computed<PresetKey>(
   () =>
     previewPreset.value ??
     activePreset.value ??
-    demo.key.value ??
-    (prompt.value.trim() ? guessLayout(prompt.value) : 'blog'),
+    (prompt.value.trim() ? guessLayout(prompt.value) : 'portfolio'),
 )
 
 const firstClause = (text: string) => {
@@ -79,7 +97,6 @@ const proofTitle = computed(() => {
   if (!text || (preset && text === preset.prompt)) {
     const shown = PRESETS.find((p) => p.key === (previewPreset.value ?? activePreset.value))
     if (shown) return shown.sampleTitle
-    if (demo.running.value) return firstClause(demo.text.value)
     return '你的网站，从这一句开始'
   }
   return firstClause(text)
@@ -87,16 +104,13 @@ const proofTitle = computed(() => {
 
 const handleFocusIn = (e: FocusEvent) => {
   composing.value = (e.target as HTMLElement).tagName === 'TEXTAREA'
-  if (composing.value) demo.stop()
 }
 
 const handlePreview = (key: PresetKey | null) => {
-  if (key) demo.stop()
   previewPreset.value = key
 }
 
 const applyPreset = (key: PresetKey) => {
-  demo.stop()
   if (activePreset.value === key) {
     prompt.value = userCustomDraft.value
     activePreset.value = null
@@ -119,7 +133,6 @@ const handleRestoreDraft = () => {
 }
 
 const handlePromptUpdate = (val: string) => {
-  demo.stop()
   prompt.value = val
   if (activePreset.value) {
     const preset = PRESETS.find((p) => p.key === activePreset.value)
@@ -156,7 +169,6 @@ const handleOptimize = async () => {
     message.warning('请将需求控制在 5000 字以内')
     return
   }
-  demo.stop()
   if (!isLoggedIn.value) {
     savePendingPrompt('optimize')
     router.push(`/user/login?redirect=${encodeURIComponent('/')}`)
@@ -277,27 +289,35 @@ onMounted(() => {
 
   if (isLoggedIn.value) mine.load()
   featured.load()
-
-  if (!prompt.value) demo.start()
 })
 </script>
 
 <template>
   <div class="home">
     <div class="hero-bed">
-      <PressBed :printing="printing" />
-      <section class="page hero">
-        <div class="hero-main">
-          <h1 class="hero-title" :class="{ 'is-printing': printing, 'is-locking': locking }">
-            <span class="line" data-ghost="一句话，">一句话，</span>
-            <span class="line" data-ghost="做出能上线">做出能<mark class="plate">上线</mark></span>
-            <span class="line" data-ghost="的网站。">的网站。</span>
+      <section class="page hero" :class="{ 'is-intro': intro }">
+        <header class="hero-heading">
+          <h1
+            ref="titleRef"
+            class="hero-title"
+            :class="{ 'is-printing': printing, 'is-locking': locking }"
+          >
+            <span
+              v-for="(line, i) in TITLE_LINES"
+              :key="line"
+              class="title-line"
+              :style="{ '--i': i }"
+            >
+              <span class="drum drum--yellow" aria-hidden="true">{{ line }}</span>
+              <span class="drum drum--blue" aria-hidden="true">{{ line }}</span>
+              <span class="drum drum--pink" aria-hidden="true">{{ line }}</span>
+              <span class="key">{{ line }}</span>
+            </span>
           </h1>
-          <p class="hero-lead">
-            满意了一键部署，拿到能分享的地址。说清楚给谁用、要哪些页面，其余交给
-            ZeroStack，边生成边预览。
-          </p>
-          <p v-if="prompt.trim() || demo.running.value" class="proof-strip" aria-hidden="true">
+          <p class="hero-lead">把想法写下来，边生成边预览。继续修改，满意后一键上线。</p>
+        </header>
+        <div class="hero-main">
+          <p v-if="prompt.trim()" class="proof-strip" aria-hidden="true">
             <span class="proof-strip-label">样张</span>
             <span class="proof-strip-title">{{ proofTitle }}</span>
           </p>
@@ -314,8 +334,6 @@ onMounted(() => {
             @update:model-value="handlePromptUpdate"
             @preset="applyPreset"
             @restore-draft="handleRestoreDraft"
-            :demo-text="demo.running.value ? demo.text.value : null"
-            :demo-preset="demo.key.value"
             @preview="handlePreview"
             @submit="handleSubmit"
             @optimize="handleOptimize"
@@ -323,23 +341,70 @@ onMounted(() => {
             @cancel-optimization="cancelOptimization"
             @focusin="handleFocusIn"
             @focusout="composing = false"
-            @pointerenter="demo.stop()"
           />
         </div>
 
-        <ProofSheet
-          class="hero-proof"
-          :title="proofTitle"
-          :layout="proofLayout"
-          :printing="printing"
-          :composing="composing || demo.running.value"
-        />
+        <div class="hero-side">
+          <ProofSheet
+            :title="proofTitle"
+            :layout="proofLayout"
+            :printing="printing"
+            :composing="composing"
+          />
+        </div>
       </section>
+      <div class="hero-bottom page">
+        <ol class="steps">
+          <li v-for="(step, i) in STEPS" :key="step.title" class="step">
+            <span class="step-no" :class="`tone-${step.tone}`">
+              <span class="step-digits">0{{ i + 1 }}</span>
+            </span>
+            <span class="step-copy">
+              <strong>{{ step.title }}</strong>
+              <span>{{ step.desc }}</span>
+            </span>
+            <svg
+              v-if="i < STEPS.length - 1"
+              class="step-arrow"
+              viewBox="0 0 44 14"
+              fill="none"
+              aria-hidden="true"
+            >
+              <line
+                x1="1"
+                y1="7"
+                x2="36"
+                y2="7"
+                stroke="currentColor"
+                stroke-width="1.5"
+                stroke-dasharray="3 3"
+              />
+              <path
+                d="M33 2.5 L40 7 L33 11.5"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </li>
+        </ol>
+        <a class="explore-link" href="#home-works">
+          精选作品
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            aria-hidden="true"
+          >
+            <path d="M10 3v13m-5-5 5 5 5-5" />
+          </svg>
+        </a>
+      </div>
     </div>
 
-    <RunStrip />
-
-    <div class="page shelves">
+    <div id="home-works" class="page shelves">
       <AppShelf
         v-if="isLoggedIn"
         title="我的作品"
@@ -355,7 +420,7 @@ onMounted(() => {
         <template #empty>
           <div class="empty-mine">
             <p class="empty-title">还没有作品。</p>
-            <p class="empty-desc">在上面写下第一句话，几分钟后它就是一个能打开的网站。</p>
+            <p class="empty-desc">从上面写下一个想法开始，你创建的网站会保存在这里。</p>
             <button type="button" class="btn btn--ink" @click="focusComposer">开始描述</button>
           </div>
         </template>
@@ -377,158 +442,397 @@ onMounted(() => {
           <p class="empty-quiet">暂时还没有精选作品。管理员挑选出的优秀作品会出现在这里。</p>
         </template>
       </AppShelf>
-
-      <section class="closing">
-        <p class="closing-line">下一张样，印你的。</p>
-        <button type="button" class="btn btn--pink btn--lg" @click="focusComposer">
-          写下第一句
-        </button>
-      </section>
     </div>
   </div>
 </template>
 
 <style scoped>
+/* 样张背后的色块会越出栏宽，横向裁掉避免出现横向滚动条 */
+.home {
+  overflow-x: clip;
+}
+
 .hero-bed {
   position: relative;
-  overflow: clip;
+  min-height: calc(100svh - var(--header-h));
+  display: flex;
+  flex-direction: column;
 }
 
 .hero {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(340px, 420px);
-  gap: clamp(40px, 6vw, 88px);
+  flex: 1;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.06fr);
+  column-gap: clamp(28px, 3.6vw, 52px);
+  row-gap: clamp(22px, 3.4vh, 34px);
   align-items: start;
-  padding-top: clamp(28px, 3.6vw, 44px);
-  padding-bottom: 64px;
+  align-content: center;
+  padding-top: clamp(14px, 2.6vh, 30px);
+  padding-bottom: 12px;
+}
+
+/* 标题按左栏宽度定字号（cqi）：黄油体字宽约 0.75em，第二行九个字不超出一栏 */
+.hero-heading {
+  grid-area: 1 / 1;
+  min-width: 0;
+  container-type: inline-size;
 }
 
 .hero-main {
+  grid-area: 2 / 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
 }
 
 .hero-title {
-  display: flex;
-  flex-direction: column;
-  font-size: clamp(48px, 6.4vw, 92px);
+  --px: 0;
+  --py: 0;
+
+  font-size: clamp(32px, 14.5cqi, 88px);
   line-height: 1.02;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.02em;
 }
 
-/* 标题多色图层入场与提交动效：平时保持重合，提交期间触发错位微移动效，结束后平滑复位 */
-.line {
+/* flow-root 阻止墨版的负外边距折叠出去，保证专色版与墨版逐像素同位 */
+.title-line {
   position: relative;
   isolation: isolate;
-  align-self: flex-start;
+  display: flow-root;
+  width: fit-content;
+  white-space: nowrap;
 }
 
-.line::before,
-.line::after {
-  content: attr(data-ghost);
-  content: attr(data-ghost) / '';
+/* 墨版：像墨辊一样自左向右滚过整行；上下留出余量，避免裁掉字形 */
+.key {
+  display: block;
+  margin-block: -0.12em;
+  padding-block: 0.12em;
+  animation: key-roll 860ms var(--ease-in-out) backwards;
+  animation-delay: calc(380ms + var(--i) * 150ms);
+}
+
+/* 专色版：与墨版同字同位、正片叠底，入场时从错位处汇入套准，粉版留一丝套印误差 */
+.drum {
   position: absolute;
-  top: 0;
-  left: 0;
+  inset: 0;
   z-index: -1;
-  white-space: nowrap;
   mix-blend-mode: multiply;
   pointer-events: none;
+  user-select: none;
+}
+
+.drum--yellow {
+  color: var(--yellow);
   opacity: 0;
+  animation: drum-yellow 1300ms var(--ease-out) both;
+  animation-delay: calc(var(--i) * 150ms);
 }
 
-.line::before {
-  --off: translate(0.07em, -0.05em);
-
-  color: var(--pink);
-  animation: ghost-in 760ms var(--ease-out) 60ms backwards;
-}
-
-.line::after {
-  --off: translate(-0.05em, 0.06em);
-
+.drum--blue {
   color: var(--blue);
-  animation: ghost-in 760ms var(--ease-out) 120ms backwards;
+  opacity: 0;
+  animation: drum-blue 1300ms var(--ease-out) both;
+  animation-delay: calc(90ms + var(--i) * 150ms);
 }
 
-@keyframes ghost-in {
-  from {
-    transform: var(--off);
-    opacity: 1;
-  }
-
-  80% {
-    opacity: 1;
-  }
+.drum--pink {
+  color: var(--pink);
+  translate: calc(0.026em + var(--px) * 4px) calc(0.022em + var(--py) * 3px);
+  animation: drum-pink 1150ms var(--ease-out) both;
+  animation-delay: calc(170ms + var(--i) * 150ms);
 }
 
-.is-printing .line::before,
-.is-printing .line::after {
+/* 生成中：三块专色版随滚筒来回错位；跳转前全部归位套准 */
+.hero-title.is-printing .drum {
   opacity: 1;
-  transform: var(--off);
-  animation: ghost-drift 1500ms var(--ease-in-out) infinite alternate;
+  animation: drum-run 420ms var(--ease-in-out) infinite alternate;
 }
 
-/* 动效结束：图层复位回重合状态并隐去 */
-.is-locking .line::before,
-.is-locking .line::after {
-  animation: ghost-in 320ms var(--ease-out) both;
+.hero-title.is-printing .drum--yellow {
+  --dx: -0.06em;
+  --dy: 0.05em;
 }
 
-@keyframes ghost-drift {
+.hero-title.is-printing .drum--blue {
+  --dx: 0.06em;
+  --dy: -0.04em;
+
+  animation-delay: -140ms;
+}
+
+.hero-title.is-printing .drum--pink {
+  --dx: 0.03em;
+  --dy: 0.06em;
+
+  animation-delay: -280ms;
+}
+
+.hero-title.is-locking .drum {
+  opacity: 0;
+  translate: 0 0;
+  animation: none;
+  transition:
+    opacity 200ms var(--ease-out),
+    translate 140ms var(--ease-out);
+}
+
+@keyframes key-roll {
   from {
-    transform: translate(0.015em, 0.015em);
+    clip-path: inset(0 100% 0 0);
+  }
+
+  to {
+    clip-path: inset(0 0 0 0);
   }
 }
 
-.plate {
-  position: relative;
-  isolation: isolate;
-  padding: 0;
-  background: none;
-  color: inherit;
-}
-
-.plate::after {
-  content: '';
-  position: absolute;
-  left: -0.06em;
-  right: -0.08em;
-  bottom: 0.06em;
-  height: 0.46em;
-  z-index: -1;
-  background: var(--yellow);
-  mix-blend-mode: multiply;
-  animation: plate-in 900ms var(--ease-out) 520ms both;
-}
-
-@keyframes plate-in {
-  from {
-    transform: translate(0.12em, 0.1em);
+@keyframes drum-yellow {
+  0% {
     opacity: 0;
+    transform: translate(-0.18em, 0.16em);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes drum-blue {
+  0% {
+    opacity: 0;
+    transform: translate(0.2em, -0.12em);
+  }
+
+  30% {
+    opacity: 1;
+  }
+
+  70% {
+    opacity: 1;
+    transform: none;
+  }
+
+  100% {
+    opacity: 0;
+    transform: none;
+  }
+}
+
+@keyframes drum-pink {
+  0% {
+    opacity: 0;
+    transform: translate(0.1em, 0.24em);
+  }
+
+  35% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes drum-run {
+  from {
+    transform: translate(var(--dx), var(--dy));
+  }
+
+  to {
+    transform: translate(calc(var(--dx) * -0.5), calc(var(--dy) * 0.4));
   }
 }
 
 .hero-lead {
-  max-width: 36em;
-  margin: 18px 0 22px;
-  font-size: 17px;
-  line-height: 1.7;
+  max-width: 32em;
+  margin-top: clamp(16px, 2.4vh, 24px);
+  font-size: clamp(16px, 1.25vw, 18px);
+  line-height: 1.6;
+  color: var(--ink);
+}
+
+/* 样张跨标题与输入两行，和左栏整体居中对齐 */
+.hero-side {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  align-self: center;
+  min-width: 0;
+}
+
+/* 墨版印完后，导语、输入区、样张依次落版 */
+.hero-lead,
+.hero-main,
+.hero-side,
+.hero-bottom > * {
+  animation: rise 820ms var(--ease-out) backwards;
+}
+
+.hero-lead {
+  animation-delay: 640ms;
+}
+
+.hero-main {
+  animation-delay: 720ms;
+}
+
+.hero-side {
+  animation-delay: 820ms;
+}
+
+.hero-bottom > * {
+  animation-delay: 1000ms;
+}
+
+.hero.is-intro .hero-side {
+  --proof-delay: 1000ms;
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+}
+
+.hero-main :deep(.composer-input) {
+  min-height: 150px;
+}
+
+.hero-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28px;
+  padding-block: 14px 30px;
+  color: var(--ink-3);
+  font-size: 12px;
+}
+
+.steps {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 18px;
+  padding: 0;
+  list-style: none;
+}
+
+.step {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.step-arrow {
+  width: 44px;
+  height: 14px;
+  margin-inline: auto;
+  flex-shrink: 0;
   color: var(--ink-2);
 }
 
-.hero-proof {
-  margin-top: 12px;
+.step-no {
+  position: relative;
+  isolation: isolate;
+  flex-shrink: 0;
+  font-family: var(--font-wide);
+  font-weight: 900;
+  font-stretch: 88%;
+  font-size: 46px;
+  letter-spacing: -0.05em;
+  line-height: 0.92;
+  color: var(--ink);
+}
+
+.step-digits {
+  display: inline-block;
+  transform: skewX(-10deg);
+}
+
+.step-no::after {
+  content: '';
+  position: absolute;
+  left: -5px;
+  right: -7px;
+  bottom: 1px;
+  height: 36%;
+  z-index: -1;
+  transform: skewX(-12deg);
+  mix-blend-mode: multiply;
+}
+
+.step-no.tone-yellow::after {
+  background: var(--yellow);
+}
+
+.step-no.tone-pink::after {
+  background: var(--pink);
+}
+
+.step-no.tone-blue::after {
+  background: var(--blue);
+}
+
+.step-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.step-copy strong {
+  font-size: 17px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.step-copy span {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.explore-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+  color: var(--ink-2);
+}
+
+.explore-link svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 320ms var(--ease-out);
+}
+
+.explore-link:hover svg {
+  transform: translateY(3px);
 }
 
 .shelves {
   display: flex;
   flex-direction: column;
-  gap: 96px;
-  padding-top: 96px;
+  gap: 64px;
+  padding-top: 48px;
+  padding-bottom: 32px;
+  scroll-margin-top: calc(var(--header-h) + 24px);
+  border-top: 1px solid var(--rule);
 }
 
 .empty-mine {
@@ -536,9 +840,9 @@ onMounted(() => {
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  padding: 40px clamp(24px, 4vw, 48px);
+  padding: 28px 32px;
   border-radius: var(--radius);
-  background: var(--yellow);
+  background: var(--paper-2);
 }
 
 .empty-title {
@@ -553,7 +857,9 @@ onMounted(() => {
 }
 
 .empty-quiet {
-  padding: 28px 0;
+  padding: 28px 24px;
+  border: 1.5px dashed var(--ink-4);
+  border-radius: var(--radius);
   color: var(--ink-3);
 }
 
@@ -561,40 +867,27 @@ onMounted(() => {
   display: none;
 }
 
-.closing {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding-top: 24px;
-  border-top: 1.5px solid var(--ink);
-}
-
-.closing-line {
-  font-family: var(--font-display);
-  font-size: clamp(32px, 4.4vw, 56px);
-  line-height: 1.05;
-}
-
 @media (max-width: 1080px) {
   .hero {
-    grid-template-columns: minmax(0, 1fr) 340px;
-  }
-}
-
-/* 双栏且视口足够高时保留样张，吸附范围限于需求区域。 */
-@media (min-width: 901px) and (min-height: 560px) {
-  .hero-proof {
-    position: sticky;
-    top: calc(var(--header-h) + 24px);
+    column-gap: 40px;
   }
 }
 
 @media (max-width: 900px) {
+  .hero-title {
+    font-size: clamp(32px, 11cqi, 64px);
+  }
+
   .hero {
     grid-template-columns: 1fr;
     min-height: 0;
+  }
+
+  .hero-side {
+    grid-area: 3 / 1;
+    max-width: 440px;
+    margin: 0 auto;
+    width: 100%;
   }
 
   /* 窄屏响应式：样张位于下方时，在输入框上方回显当前样张标题单行摘要 */
@@ -637,11 +930,71 @@ onMounted(() => {
     background: var(--yellow);
     mix-blend-mode: multiply;
   }
+}
 
-  .hero-proof {
-    max-width: 440px;
-    margin: 24px auto 0;
-    width: 100%;
+@media (max-width: 560px) {
+  .hero {
+    gap: 24px;
+    padding-top: 28px;
+    padding-bottom: 44px;
+  }
+
+  .hero-main :deep(.composer-input) {
+    min-height: 120px;
+  }
+
+  .hero-bottom {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .steps {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 14px;
+  }
+
+  .step-arrow {
+    display: none;
+  }
+
+  .step-no {
+    width: 52px;
+    font-size: 36px;
+  }
+
+  .explore-link {
+    align-self: center;
+  }
+
+  .hero-side {
+    padding-top: 0;
+  }
+
+  .hero-lead {
+    margin-top: 14px;
+    font-size: 15px;
+  }
+
+  .shelves {
+    gap: 44px;
+  }
+}
+
+/* 减弱动态效果：全局已把动画时长压到近零，这里再去掉入场延迟，内容直接出现 */
+@media (prefers-reduced-motion: reduce) {
+  .key,
+  .drum,
+  .hero-lead,
+  .hero-main,
+  .hero-side,
+  .hero-bottom > * {
+    animation-delay: 0ms !important;
+  }
+
+  .hero.is-intro .hero-side {
+    --proof-delay: 0ms;
   }
 }
 </style>

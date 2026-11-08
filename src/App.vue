@@ -25,7 +25,7 @@ const themeConfig: ThemeConfig = {
     colorTextPlaceholder: '#6b6b72',
     colorBorder: 'rgba(23, 23, 26, 0.22)',
     colorBorderSecondary: 'rgba(23, 23, 26, 0.12)',
-    colorBgLayout: '#fafaf7',
+    colorBgLayout: '#fefcf6',
     colorBgContainer: '#ffffff',
     borderRadius: 6,
     borderRadiusLG: 10,

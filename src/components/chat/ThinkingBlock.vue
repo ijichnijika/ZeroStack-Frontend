@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { DownOutlined } from '@ant-design/icons-vue'
 import MarkdownViewer from '@/components/MarkdownViewer.vue'
 
-defineProps<{
+const props = defineProps<{
   content: string
   streaming: boolean
 }>()
 
-const open = ref(false)
+const open = ref(props.streaming)
+
+watch(
+  () => props.streaming,
+  (streaming) => {
+    if (streaming) open.value = true
+  },
+)
 </script>
 
 <template>

@@ -114,7 +114,7 @@ const handleMenuClick = async ({ key }: { key: string | number }) => {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--paper);
+  background: var(--paper-grain), var(--paper);
   border-bottom: 1px solid var(--rule);
 }
 

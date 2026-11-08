@@ -14,6 +14,8 @@ import AgentSwitch from '@/components/AgentSwitch.vue'
 import type { PromptOptimizationVO } from '@/api/promptController'
 import { PRESETS, type PresetKey } from './presets'
 
+const CHIP_TONES = ['yellow', 'pink', 'blue'] as const
+
 const props = withDefaults(
   defineProps<{
     modelValue: string
@@ -276,13 +278,16 @@ defineExpose({
     </section>
 
     <div class="preset-row" role="group" aria-label="示例需求">
-      <span class="preset-label">试试</span>
+      <span class="preset-label">试试：</span>
       <button
-        v-for="p in PRESETS"
+        v-for="(p, i) in PRESETS"
         :key="p.key"
         type="button"
         class="preset-chip"
-        :class="{ 'is-active': activePreset === p.key, 'is-demo': demoPreset === p.key }"
+        :class="[
+          `tone-${CHIP_TONES[i % CHIP_TONES.length]}`,
+          { 'is-active': activePreset === p.key, 'is-demo': demoPreset === p.key },
+        ]"
         :aria-pressed="activePreset === p.key"
         @click="emit('preset', p.key)"
         @mouseenter="emit('preview', p.key)"
@@ -315,17 +320,25 @@ defineExpose({
 }
 
 .composer-sheet {
+  margin-bottom: 8px;
   background: var(--sheet);
   border: 1.5px solid var(--ink);
   border-radius: var(--radius);
   outline: 6px solid transparent;
-  transition: outline-color 240ms var(--ease-out);
+  /* 纸下垫一块黄色专色版；两层阴影结构保持一致，聚焦时才能平滑过渡 */
+  box-shadow:
+    inset 0 0 0 0 var(--ink),
+    8px 8px 0 var(--yellow);
+  transition:
+    outline-color 240ms var(--ease-out),
+    box-shadow var(--t-register) var(--ease-out);
 }
 
-/* 聚焦态：使用高对比度边框以确保键盘/鼠标聚焦的可识别度 */
+/* 聚焦态：边框加粗，黄版错开更多，提示“正在制版” */
 .composer-sheet:focus-within {
-  outline-color: var(--yellow-tint);
-  box-shadow: inset 0 0 0 1.5px var(--ink);
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink),
+    13px 13px 0 var(--yellow);
 }
 
 .composer-sheet.is-invalid {
@@ -352,7 +365,7 @@ defineExpose({
 .composer-input {
   display: block;
   width: 100%;
-  min-height: 108px;
+  min-height: 120px;
   max-height: 200px;
   padding: 16px 18px 6px;
   border: 0;
@@ -374,7 +387,7 @@ defineExpose({
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 14px;
+  gap: 8px;
   padding: 10px 10px 10px 14px;
 }
 
@@ -403,7 +416,7 @@ defineExpose({
 }
 
 .composer-hint {
-  display: inline-flex;
+  display: none;
   align-items: center;
   gap: 4px;
   font-size: 12px;
@@ -430,12 +443,20 @@ kbd {
   min-width: 118px;
 }
 
+.composer-submit :deep(.anticon-arrow-right) {
+  transition: transform 320ms var(--ease-out);
+}
+
+.composer-submit:hover:not(:disabled) :deep(.anticon-arrow-right) {
+  transform: translateX(4px);
+}
+
 .composer-optimize {
   flex-shrink: 0;
   gap: 6px;
   height: 44px;
   padding: 0 12px;
-  background: var(--paper-2);
+  background: transparent;
   color: var(--ink-2);
   font-size: 13px;
 }
@@ -461,35 +482,92 @@ kbd {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
 }
 
 .preset-label {
-  margin-right: 4px;
+  margin-right: 2px;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-3);
+  font-weight: 700;
+  color: var(--ink-2);
 }
 
+/* 专色标签：高浓度孔版油墨平网配虚线裁切边，悬停时满版油墨从左侧滚上 */
 .preset-chip {
+  --chip-tint: transparent;
+  --chip-ink: var(--yellow);
+  --chip-ink-text: var(--ink);
+
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
   height: 32px;
-  padding: 0 14px;
-  border: 1.5px solid rgba(23, 23, 26, 0.5);
+  padding: 0 15px;
+  border: 1.5px dashed rgba(23, 23, 26, 0.22);
   border-radius: var(--pill);
-  background: transparent;
+  background: var(--chip-tint);
   font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2);
+  font-weight: 700;
+  color: var(--ink);
   cursor: pointer;
   transition:
     border-color var(--t-fast) var(--ease-out),
     background-color var(--t-fast) var(--ease-out),
-    color var(--t-fast) var(--ease-out);
+    color var(--t-fast) var(--ease-out),
+    transform var(--t-fast) var(--ease-out);
 }
 
-.preset-chip:hover {
-  border-color: var(--ink);
-  color: var(--ink);
+.preset-chip.tone-yellow {
+  --chip-tint: color-mix(in srgb, var(--yellow) 80%, var(--sheet));
+  --chip-ink: var(--yellow);
+}
+
+.preset-chip.tone-pink {
+  --chip-tint: color-mix(in srgb, var(--pink) 42%, var(--sheet));
+  --chip-ink: var(--pink);
+}
+
+.preset-chip.tone-blue {
+  --chip-tint: color-mix(in srgb, var(--blue) 45%, var(--sheet));
+  --chip-ink: var(--blue);
+  --chip-ink-text: #fff;
+}
+
+.preset-chip::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--chip-ink);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 360ms var(--ease-out);
+}
+
+.preset-chip:hover,
+.preset-chip:focus-visible {
+  color: var(--chip-ink-text);
+}
+
+.preset-chip:active {
+  transform: translateY(1px);
+}
+
+.preset-chip:hover::after,
+.preset-chip:focus-visible::after {
+  transform: scaleX(1);
+}
+
+.preset-chip.is-active::after {
+  display: none;
+}
+
+.restore-chip {
+  border-color: var(--rule);
+  color: var(--ink-2);
 }
 
 /* 自动演示高亮标签：使用虚线描边区别于已选中的实色背景态 */
@@ -632,7 +710,26 @@ kbd {
   color: #fff;
 }
 
+@media (min-width: 1200px) {
+  .composer-hint {
+    display: inline-flex;
+  }
+}
+
 @media (max-width: 560px) {
+  .preset-row {
+    gap: 6px;
+  }
+
+  .preset-label {
+    display: none;
+  }
+
+  .preset-chip {
+    padding-inline: 11px;
+    font-size: 12px;
+  }
+
   .optimization {
     padding: 18px;
   }
